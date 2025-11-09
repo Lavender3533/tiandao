@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "tiandao:block/spirit_gathering_block"
+  }
+}

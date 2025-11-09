@@ -1,0 +1,77 @@
+{
+  "item.tiandao.low_spirit_stone": "Low Spirit Stone",
+  "item.tiandao.medium_spirit_stone": "Medium Spirit Stone",
+  "item.tiandao.high_spirit_stone": "High Spirit Stone",
+  
+  "item.tiandao.qi_gathering_pill": "Qi Gathering Pill",
+  "item.tiandao.spirit_recovery_pill": "Spirit Recovery Pill",
+  
+  "item.tiandao.metal_cultivation_manual": "Metal Cultivation Manual",
+  "item.tiandao.wood_cultivation_manual": "Wood Cultivation Manual",
+  "item.tiandao.water_cultivation_manual": "Water Cultivation Manual",
+  "item.tiandao.fire_cultivation_manual": "Fire Cultivation Manual",
+  "item.tiandao.earth_cultivation_manual": "Earth Cultivation Manual",
+  
+  "block.tiandao.cultivation_altar": "Cultivation Altar",
+  "block.tiandao.spirit_gathering_block": "Spirit Gathering Block",
+  
+  "itemGroup.tiandao.cultivation_tab": "Tian Dao Cultivation",
+  
+  "tooltip.tiandao.spirit_stone": "Restore %s spirit power, increase %s cultivation progress",
+  "tooltip.tiandao.cultivation_pill": "Restore %s spirit power, increase %s cultivation progress",
+  "tooltip.tiandao.cultivation_pill.recovery": "Spirit recovery bonus %s for %s seconds",
+  "tooltip.tiandao.cultivation_manual.type": "Spiritual Root Type: %s",
+  "tooltip.tiandao.cultivation_manual.bonus": "Cultivation Bonus: %s",
+  "tooltip.tiandao.cultivation_manual.level": "Manual Level: %s/%s",
+  "tooltip.tiandao.cultivation_manual.match": "Matches spiritual root",
+  "tooltip.tiandao.cultivation_manual.mismatch": "Doesn't match spiritual root",
+  
+  "tooltip.tiandao.cultivation_altar": "Cultivation bonus: %s, spirit recovery bonus: %s",
+  "tooltip.tiandao.spirit_gathering_block": "Restore %s spirit power every %s seconds, range: %s blocks",
+  
+  "message.tiandao.cultivation.progress": "Your cultivation progress increased by %s",
+  "message.tiandao.cultivation.realm_break": "Congratulations! You successfully broke through to %s level %s",
+  "message.tiandao.cultivation.level_break": "Congratulations! You successfully advanced to %s level %s",
+  "message.tiandao.cultivation.max_level": "You have reached the maximum level of the current realm",
+  "message.tiandao.cultivation.max_realm": "You have reached the highest cultivation realm",
+  "message.tiandao.cultivation.failed_break": "Breakthrough failed, more cultivation needed",
+  
+  "message.tiandao.spiritual_root.assigned": "Your spiritual root is: %s (%s)",
+  "message.tiandao.spiritual_root.reroll": "Your spiritual root has been reassigned to: %s (%s)",
+  
+  "message.tiandao.spirit_power.recovered": "Spirit power recovered by %s",
+  "message.tiandao.spirit_power.full": "Spirit power is full",
+  
+  "tiandao.spiritual_root_type.metal": "Metal",
+  "tiandao.spiritual_root_type.wood": "Wood",
+  "tiandao.spiritual_root_type.water": "Water",
+  "tiandao.spiritual_root_type.fire": "Fire",
+  "tiandao.spiritual_root_type.earth": "Earth",
+  
+  "tiandao.spiritual_root_quality.normal": "Normal",
+  "tiandao.spiritual_root_quality.good": "Good",
+  "tiandao.spiritual_root_quality.excellent": "Excellent",
+  "tiandao.spiritual_root_quality.outstanding": "Outstanding",
+  "tiandao.spiritual_root_quality.perfect": "Perfect",
+  
+  "tiandao.cultivation_realm.mortal": "Mortal",
+  "tiandao.cultivation_realm.qi_condensation": "Qi Condensation",
+  "tiandao.cultivation_realm.foundation_establishment": "Foundation Establishment",
+  "tiandao.cultivation_realm.golden_core": "Golden Core",
+  "tiandao.cultivation_realm.nascent_soul": "Nascent Soul",
+  "tiandao.cultivation_realm.soul_formation": "Soul Formation",
+  "tiandao.cultivation_realm.void_refining": "Void Refining",
+  "tiandao.cultivation_realm.body_integration": "Body Integration",
+  "tiandao.cultivation_realm.tribulation": "Tribulation",
+  "tiandao.cultivation_realm.mahayana": "Mahayana",
+  "tiandao.cultivation_realm.immortal_ascension": "Immortal Ascension",
+  
+  "tiandao.cultivation_level.level": "Level",
+  
+  "key.tiandao.category": "Tian Dao Cultivation",
+  "key.tiandao.cultivation_status": "Cultivation Status",
+  "key.tiandao.toggle_hud": "Toggle Cultivation HUD",
+  
+  "message.tiandao.hud.enabled": "Cultivation HUD enabled",
+  "message.tiandao.hud.disabled": "Cultivation HUD disabled"
+}
