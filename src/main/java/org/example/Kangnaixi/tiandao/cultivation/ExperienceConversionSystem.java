@@ -67,8 +67,11 @@ public class ExperienceConversionSystem {
                 Tiandao.LOGGER.debug("玩家 {} 消耗 {} 点灵气，获得 {} 点修炼经验", 
                     player.getName().getString(), conversionCount * SPIRIT_PER_CONVERSION, totalExperience);
                 
-                // 检查是否达到突破条件
-                checkBreakthrough(player, cultivation);
+                boolean brokeThrough = BreakthroughHelper.attemptBreakthrough(player, cultivation);
+                if (!brokeThrough) {
+                    // 检查是否达到突破条件
+                    checkBreakthrough(player, cultivation);
+                }
             }
         });
     }

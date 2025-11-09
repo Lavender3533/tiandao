@@ -11,6 +11,7 @@ import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootQuality;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
+import org.example.Kangnaixi.tiandao.cultivation.SubRealm;
 
 import java.util.function.Supplier;
 
@@ -20,6 +21,7 @@ import java.util.function.Supplier;
  */
 public class CultivationDataSyncPacket {
     private final String realmName;
+    private final String subRealmName;
     private final int level;
     private final double cultivationProgress;
     private final double spiritPower;
@@ -33,9 +35,11 @@ public class CultivationDataSyncPacket {
     private final String currentPracticeMethod;
     private final int cultivationExperience;
     private final long lastCombatTime;
+    private final int foundation;
     
     public CultivationDataSyncPacket(ICultivation cultivation) {
         this.realmName = cultivation.getRealm().name();
+        this.subRealmName = cultivation.getSubRealm().name();
         this.level = cultivation.getLevel();
         this.cultivationProgress = cultivation.getCultivationProgress();
         this.spiritPower = cultivation.getSpiritPower();
@@ -43,6 +47,7 @@ public class CultivationDataSyncPacket {
         this.spiritualRootType = cultivation.getSpiritualRoot().name();
         this.environmentalDensity = cultivation.getEnvironmentalDensity();
         this.intensityBonus = cultivation.getIntensityBonus();
+        this.foundation = cultivation.getFoundation();
         
         // 修炼系统数据
         this.practicing = cultivation.isPracticing();
@@ -61,6 +66,7 @@ public class CultivationDataSyncPacket {
     
     public CultivationDataSyncPacket(FriendlyByteBuf buf) {
         this.realmName = buf.readUtf();
+        this.subRealmName = buf.readUtf();
         this.level = buf.readInt();
         this.cultivationProgress = buf.readDouble();
         this.spiritPower = buf.readDouble();
@@ -69,6 +75,7 @@ public class CultivationDataSyncPacket {
         this.spiritualRootQuality = buf.readUtf();
         this.environmentalDensity = buf.readDouble();
         this.intensityBonus = buf.readDouble();
+        this.foundation = buf.readInt();
         // 修炼系统数据
         this.practicing = buf.readBoolean();
         this.currentPracticeMethod = buf.readUtf();
@@ -78,6 +85,7 @@ public class CultivationDataSyncPacket {
     
     public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(realmName);
+        buf.writeUtf(subRealmName);
         buf.writeInt(level);
         buf.writeDouble(cultivationProgress);
         buf.writeDouble(spiritPower);
@@ -86,6 +94,7 @@ public class CultivationDataSyncPacket {
         buf.writeUtf(spiritualRootQuality);
         buf.writeDouble(environmentalDensity);
         buf.writeDouble(intensityBonus);
+        buf.writeInt(foundation);
         // 修炼系统数据
         buf.writeBoolean(practicing);
         buf.writeUtf(currentPracticeMethod);
@@ -109,6 +118,12 @@ public class CultivationDataSyncPacket {
                     }
                     
                     cultivation.setLevel(level);
+                    try {
+                        SubRealm subRealm = SubRealm.valueOf(subRealmName);
+                        cultivation.setSubRealm(subRealm);
+                    } catch (IllegalArgumentException e) {
+                        Tiandao.LOGGER.error("无效的小境界名称: " + subRealmName, e);
+                    }
                     cultivation.setCultivationProgress(cultivationProgress);
                     
                     // 更新灵力（关键！）
@@ -144,6 +159,8 @@ public class CultivationDataSyncPacket {
                     }
                     
                     Tiandao.LOGGER.debug("客户端修仙数据已同步: 灵力=" + spiritPower + "/" + maxSpiritPower);
+                    
+                    cultivation.setFoundation(foundation);
                 });
             }
         });

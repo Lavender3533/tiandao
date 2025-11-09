@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
+import org.example.Kangnaixi.tiandao.cultivation.BreakthroughHelper;
 import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
 import org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket;
@@ -102,12 +103,7 @@ public class MeditationPractice implements PracticeMethod {
         
         // 检查是否达到突破条件（每秒检查一次）
         if (player.tickCount % 20 == 0) {
-            int currentExp = cultivation.getCultivationExperience();
-            int requiredExp = cultivation.getRequiredExperienceForSubRealm();
-            
-            if (currentExp >= requiredExp && requiredExp > 0) {
-                attemptBreakthrough(player, cultivation);
-            }
+            BreakthroughHelper.attemptBreakthrough(player, cultivation);
         }
         
         // 打坐修炼时也增加功法经验（每秒2点，比被动恢复快）
@@ -202,81 +198,44 @@ public class MeditationPractice implements PracticeMethod {
         }
         
         // 如果计算出的消耗量大于0，就转化为经验
-        if (consumptionPerSecond > 0.001) { // 降低阈值，确保即使很小的消耗也能触发
+        // 如果计算出的消耗量大于0，就转化为经验
+        if (consumptionPerSecond > 0.001) {
             double currentSpirit = cultivation.getSpiritPower();
             double maxSpirit = cultivation.getMaxSpiritPower();
-            boolean isSpiritFull = Math.abs(currentSpirit - maxSpirit) < 0.01; // 考虑浮点数误差
-            
-            // 核心逻辑：打坐时，将恢复的灵气转化为经验
-            // 即使灵力满了，也能通过消耗"恢复的灵气"来获得经验
-            
-            double actualConsumption = 0.0;
-            double spiritToConsume = 0.0; // 实际需要消耗的现有灵力
-            
-            if (isSpiritFull) {
-                // 情况1：灵力已满
-                // 为了视觉效果，我们消耗一小部分灵力（消耗速度的一半），然后再恢复
-                // 这样用户能看到灵力有变化，但仍然能持续获得经验
-                // 消耗量 = min(消耗速度, 恢复速度的一半)
-                spiritToConsume = Math.min(consumptionPerSecond, recoveryPerSecond * 0.5);
-                if (spiritToConsume > 0.1) { // 至少消耗0.1点，确保有视觉效果
-                    cultivation.consumeSpiritPower(spiritToConsume);
+            double targetConsumption = Math.min(consumptionPerSecond, maxSpirit);
+            double actualConsumption = Math.min(targetConsumption, currentSpirit);
+
+            if (actualConsumption > 0.001) {
+                boolean consumed = cultivation.consumeSpiritPower(actualConsumption);
+                if (consumed) {
+                    if (player.tickCount % 400 == 0) {
+                        Tiandao.LOGGER.info("打坐经验转化: 灵力={}/{}, 实际消耗={}",
+                            String.format("%.1f", cultivation.getSpiritPower()),
+                            String.format("%.1f", maxSpirit),
+                            String.format("%.2f", actualConsumption));
+                    }
+
+                    // 立即同步一次，确保HUD能看到灵力波动
+                    NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), player);
+                    org.example.Kangnaixi.tiandao.cultivation.ExperienceConversionSystem.onSpiritConsumed(player, actualConsumption);
+                } else if (player.tickCount % 200 == 0) {
+                    Tiandao.LOGGER.warn("打坐消耗失败: 当前灵力={}, 目标消耗={}",
+                        String.format("%.2f", cultivation.getSpiritPower()),
+                        String.format("%.2f", actualConsumption));
                 }
-                // 实际消耗量用于经验转化（基于恢复速度）
-                actualConsumption = consumptionPerSecond;
-            } else if (currentSpirit >= consumptionPerSecond) {
-                // 情况2：灵力未满但有足够的现有灵力
-                // 消耗现有灵力
-                actualConsumption = consumptionPerSecond;
-                spiritToConsume = consumptionPerSecond;
-                cultivation.consumeSpiritPower(spiritToConsume);
-            } else if (currentSpirit > 0) {
-                // 情况3：灵力不足但有剩余
-                // 消耗现有所有灵力
-                spiritToConsume = currentSpirit;
-                cultivation.consumeSpiritPower(spiritToConsume);
-                
-                // 剩余部分视为"消耗恢复的灵气"
-                double remainingConsumption = consumptionPerSecond - spiritToConsume;
-                if (remainingConsumption > 0) {
-                    // 这部分不会实际扣除现有灵力，但会转化为经验
-                    actualConsumption = consumptionPerSecond; // 总消耗量
-                } else {
-                    actualConsumption = spiritToConsume;
-                }
-            } else {
-                // 情况4：灵力为0
-                // 直接消耗"恢复的灵气"（不实际扣除，但转化为经验）
-                actualConsumption = consumptionPerSecond;
-                spiritToConsume = 0.0; // 不消耗现有灵力（因为已经是0）
-            }
-            
-            // 无论哪种情况，都触发经验转化
-            // 这样即使灵力满了，也能通过消耗"恢复的灵气"来获得经验
-            if (actualConsumption > 0.001) { // 降低阈值，确保即使很小的消耗也能触发
-                // 调试日志：输出实际消耗（每20秒输出一次）
-                if (player.tickCount % 400 == 0) {
-                    Tiandao.LOGGER.info("打坐经验转化: 灵力={}/{}, 满={}, 实际消耗={}",
-                        String.format("%.1f", currentSpirit), String.format("%.1f", maxSpirit), isSpiritFull, String.format("%.2f", actualConsumption));
-                }
-                org.example.Kangnaixi.tiandao.cultivation.ExperienceConversionSystem.onSpiritConsumed(player, actualConsumption);
-            } else {
-                // 如果消耗量太小，输出警告
-                if (player.tickCount % 400 == 0) {
-                    Tiandao.LOGGER.warn("打坐消耗量过小: consumptionPerSecond={}, actualConsumption={}, 可能无法获得经验",
-                        String.format("%.2f", consumptionPerSecond), String.format("%.2f", actualConsumption));
-                }
+            } else if (player.tickCount % 400 == 0) {
+                Tiandao.LOGGER.warn("打坐灵力不足，无法继续转化。当前灵力={}",
+                    String.format("%.2f", currentSpirit));
             }
         } else {
             // 如果计算出的消耗量太小，输出警告
             if (player.tickCount % 400 == 0) {
-                Tiandao.LOGGER.warn("打坐消耗计算过小: consumptionPerSecond={}, 可能无法获得经验。恢复速率={}, 强度加成={}, 环境密度={}, 打坐加成={}, 时间加速={}",
+                Tiandao.LOGGER.warn("打坐消耗计算过低: consumptionPerSecond={}, 可能无法获得经验。恢复速率={}, 强度加成={}, 环境密度={}, 打坐加成={}, 时间加成={}",
                     String.format("%.2f", consumptionPerSecond), String.format("%.2f", baseRecoveryRate),
                     String.format("%.2f", intensityBonus), String.format("%.2f", environmentalDensity),
                     String.format("%.2f", meditationBonus), String.format("%.2f", timeAcceleration));
             }
-        }
-    }
+        }}
     
     /**
      * 更新时间加速
@@ -409,94 +368,6 @@ public class MeditationPractice implements PracticeMethod {
         return null; // 无需自动停止
     }
     
-    /**
-     * 尝试突破（使用新的小境界系统）
-     */
-    private void attemptBreakthrough(ServerPlayer player, ICultivation cultivation) {
-        // 检查经验是否达到要求
-        int currentExp = cultivation.getCultivationExperience();
-        int requiredExp = cultivation.getRequiredExperienceForSubRealm();
-        
-        if (currentExp < requiredExp || requiredExp <= 0) {
-            return; // 经验不足或无需经验，无法突破
-        }
-        
-        // 保存突破前的状态
-        org.example.Kangnaixi.tiandao.cultivation.SubRealm oldSubRealm = cultivation.getSubRealm();
-        org.example.Kangnaixi.tiandao.cultivation.CultivationRealm oldRealm = cultivation.getRealm();
-        double oldMaxSpiritPower = cultivation.getMaxSpiritPower();
-        
-        // 使用统一的突破方法（会自动检查根基值）
-        boolean success = cultivation.tryBreakthrough();
-        
-        if (success) {
-            // 突破成功，发送消息
-            org.example.Kangnaixi.tiandao.cultivation.SubRealm newSubRealm = cultivation.getSubRealm();
-            org.example.Kangnaixi.tiandao.cultivation.CultivationRealm newRealm = cultivation.getRealm();
-            
-            // 判断是小境界还是大境界突破
-            if (newRealm == oldRealm && newSubRealm != oldSubRealm) {
-                // 小境界突破
-                player.sendSystemMessage(Component.literal(""));
-                player.sendSystemMessage(Component.literal("§a§l━━━ 小境界突破！ ━━━"));
-                player.sendSystemMessage(Component.literal("§e恭喜！您已突破至 §b" + newRealm.getDisplayName() + " " + newSubRealm.getDisplayName()));
-                player.sendSystemMessage(Component.literal("§a§l━━━━━━━━━━━━"));
-                player.sendSystemMessage(Component.literal(""));
-                
-                Tiandao.LOGGER.info("玩家 {} 突破至 {} {}", 
-                    player.getName().getString(), 
-                    newRealm.getDisplayName(), 
-                    newSubRealm.getDisplayName());
-            } else if (newRealm != oldRealm) {
-                // 大境界突破
-                player.sendSystemMessage(Component.literal(""));
-                player.sendSystemMessage(Component.literal("§6§l━━━ 大境界突破！ ━━━"));
-                player.sendSystemMessage(Component.literal("§e恭喜！您已突破至 §b" + newRealm.getDisplayName() + " " + newSubRealm.getDisplayName()));
-                player.sendSystemMessage(Component.literal("§7境界: " + oldRealm.getDisplayName() + " " + oldSubRealm.getDisplayName() + " → §b" + newRealm.getDisplayName() + " " + newSubRealm.getDisplayName()));
-                player.sendSystemMessage(Component.literal("§7最大灵力: " + String.format("%.0f", oldMaxSpiritPower) + " → §a" + String.format("%.0f", cultivation.getMaxSpiritPower())));
-                player.sendSystemMessage(Component.literal("§6§l━━━━━━━━━━━━"));
-                player.sendSystemMessage(Component.literal(""));
-                
-                Tiandao.LOGGER.info("玩家 {} 突破至 {} {}", 
-                    player.getName().getString(), 
-                    newRealm.getDisplayName(), 
-                    newSubRealm.getDisplayName());
-            }
-        } else {
-            // 突破失败，检查原因并提示（避免刷屏，每10秒提示一次）
-            int foundation = cultivation.getFoundation();
-            org.example.Kangnaixi.tiandao.cultivation.SubRealm currentSubRealm = cultivation.getSubRealm();
-            org.example.Kangnaixi.tiandao.cultivation.SubRealm nextSubRealm = currentSubRealm.getNext();
-            
-            if (player.tickCount % 200 == 0) { // 每10秒提示一次
-                if (nextSubRealm != null) {
-                    // 小境界突破失败
-                    if (foundation < 50) {
-                        player.sendSystemMessage(Component.literal("§c根基不稳，无法突破小境界！根基值: " + foundation + "/50"));
-                        Tiandao.LOGGER.warn("玩家 {} 突破失败：根基不足 ({} < 50), 经验: {}/{}", 
-                            player.getName().getString(), foundation, currentExp, requiredExp);
-                    }
-                } else {
-                    // 大境界突破失败
-                    org.example.Kangnaixi.tiandao.cultivation.CultivationRealm nextRealm = oldRealm.getNext();
-                    if (nextRealm != null && foundation < 30) {
-                        player.sendSystemMessage(Component.literal("§c根基严重受损，无法突破大境界！根基值: " + foundation + "/30"));
-                        Tiandao.LOGGER.warn("玩家 {} 突破失败：根基不足 ({} < 30), 经验: {}/{}", 
-                            player.getName().getString(), foundation, currentExp, requiredExp);
-                    }
-                }
-            }
-        }
-        
-        // 同步到客户端
-        NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), player);
-    }
-    
-    /**
-     * 生成突破成功的粒子特效 - 华丽的爆发效果
-     * 已移除，等待后续更好的渲染方式
-     */
-    @Deprecated
     private void spawnBreakthroughParticles(ServerPlayer player, CultivationRealm newRealm) {
         // 粒子效果已移除，等待后续更好的渲染方式
         // 原代码已删除
@@ -601,4 +472,3 @@ public class MeditationPractice implements PracticeMethod {
         });
     }
 }
-

@@ -9,9 +9,11 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
+import org.example.Kangnaixi.tiandao.cultivation.FoundationSystem;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootQuality;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
@@ -53,6 +55,20 @@ public class TiandaoCommand {
                         return builder.buildFuture();
                     })
                     .executes(TiandaoCommand::setSpiritualRoot)))
+            .then(Commands.literal("foundation")
+                .executes(TiandaoCommand::showOwnFoundation)
+                .then(Commands.literal("set")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
+                            .executes(TiandaoCommand::setFoundationValue))))
+                .then(Commands.literal("add")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(-100, 100))
+                            .executes(TiandaoCommand::addFoundationValue))))
+                .then(Commands.argument("player", EntityArgument.player())
+                    .executes(context -> showFoundationForPlayer(context.getSource(), EntityArgument.getPlayer(context, "player")))))
             .then(Commands.literal("addprogress")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.argument("amount", IntegerArgumentType.integer(0))
@@ -181,6 +197,20 @@ public class TiandaoCommand {
                         return builder.buildFuture();
                     })
                     .executes(TiandaoCommand::setSpiritualRoot)))
+            .then(Commands.literal("foundation")
+                .executes(TiandaoCommand::showOwnFoundation)
+                .then(Commands.literal("set")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
+                            .executes(TiandaoCommand::setFoundationValue))))
+                .then(Commands.literal("add")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(-100, 100))
+                            .executes(TiandaoCommand::addFoundationValue))))
+                .then(Commands.argument("player", EntityArgument.player())
+                    .executes(context -> showFoundationForPlayer(context.getSource(), EntityArgument.getPlayer(context, "player")))))
             .then(Commands.literal("addprogress")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.argument("amount", IntegerArgumentType.integer(0))
@@ -220,6 +250,7 @@ public class TiandaoCommand {
         context.getSource().sendSuccess(() -> Component.literal("使用 /tiandao help 查看完整命令列表"), false);
         context.getSource().sendSuccess(() -> Component.literal("常用命令:"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao status - 查看修仙状态"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation - 查看根基状态"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao help - 完整帮助"), false);
         return 1;
     }
@@ -230,11 +261,14 @@ public class TiandaoCommand {
         context.getSource().sendSuccess(() -> Component.literal("玩家命令:"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao status - 查看自己的修仙状态"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao status <玩家> - 查看其他玩家状态"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation [玩家] - 查看根基状态"), false);
         context.getSource().sendSuccess(() -> Component.literal(""), false);
         context.getSource().sendSuccess(() -> Component.literal("管理员命令 (需要OP权限):"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao setrealm <境界> [等级] - 设置境界"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao setroot <灵根> - 设置灵根"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao allocate <玩家> [类型] [品质] - 分配灵根"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation set <玩家> <数值> - 直接设置根基"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation add <玩家> <变化量> - 调整根基"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao addprogress <数量> - 增加修炼进度"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao addspiritpower <数量> - 增加灵力"), false);
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao breakthrough - 强制突破"), false);
@@ -289,6 +323,78 @@ public class TiandaoCommand {
         });
         
         return 1;
+    }
+
+    private static int showOwnFoundation(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        return showFoundationForPlayer(context.getSource(), player);
+    }
+
+    private static int showFoundationForPlayer(CommandSourceStack source, ServerPlayer player) {
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            int foundation = cultivation.getFoundation();
+            source.sendSuccess(() -> buildFoundationComponent(player, foundation), false);
+            return 1;
+        }).orElseGet(() -> {
+            source.sendFailure(Component.literal("未找到该玩家的修仙数据"));
+            return 0;
+        });
+    }
+
+    private static int setFoundationValue(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer target = EntityArgument.getPlayer(context, "player");
+        int value = IntegerArgumentType.getInteger(context, "value");
+        return target.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            cultivation.setFoundation(value);
+            org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
+                new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
+                target
+            );
+            context.getSource().sendSuccess(() ->
+                Component.literal("已将 " + target.getName().getString() + " 的根基设置为 " + cultivation.getFoundation()), true);
+            sendFoundationUpdateToPlayer(target, cultivation.getFoundation());
+            return 1;
+        }).orElseGet(() -> {
+            context.getSource().sendFailure(Component.literal("未找到该玩家的修仙数据"));
+            return 0;
+        });
+    }
+
+    private static int addFoundationValue(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer target = EntityArgument.getPlayer(context, "player");
+        int amount = IntegerArgumentType.getInteger(context, "amount");
+        return target.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            int before = cultivation.getFoundation();
+            cultivation.addFoundation(amount);
+            int after = cultivation.getFoundation();
+            org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
+                new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
+                target
+            );
+            context.getSource().sendSuccess(() ->
+                Component.literal(String.format("已调整 %s 的根基: %d → %d (变化 %+d)",
+                    target.getName().getString(), before, after, after - before)), true);
+            sendFoundationUpdateToPlayer(target, after);
+            return 1;
+        }).orElseGet(() -> {
+            context.getSource().sendFailure(Component.literal("未找到该玩家的修仙数据"));
+            return 0;
+        });
+    }
+
+    private static void sendFoundationUpdateToPlayer(ServerPlayer player, int foundation) {
+        FoundationSystem.FoundationDescriptor descriptor = FoundationSystem.describeFoundation(foundation);
+        player.sendSystemMessage(Component.literal(
+            String.format("§a当前根基: %d (%s)", foundation, descriptor.label())
+        ));
+    }
+
+    private static Component buildFoundationComponent(ServerPlayer player, int foundation) {
+        FoundationSystem.FoundationDescriptor descriptor = FoundationSystem.describeFoundation(foundation);
+        return Component.literal("玩家 " + player.getName().getString() + " 根基: " + foundation + " (")
+            .append(Component.literal(descriptor.label())
+                .withStyle(style -> style.withColor(TextColor.fromRgb(descriptor.color()))))
+            .append(Component.literal(")"));
     }
 
     private static int setRealm(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -971,4 +1077,3 @@ public class TiandaoCommand {
         return 1;
     }
 }
-

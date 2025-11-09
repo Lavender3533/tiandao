@@ -7,8 +7,10 @@ import net.minecraft.world.entity.player.Player;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
 import org.example.Kangnaixi.tiandao.config.CultivationConfig;
+import org.example.Kangnaixi.tiandao.cultivation.FoundationSystem;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
+import org.example.Kangnaixi.tiandao.cultivation.SubRealm;
 
 /**
  * 修仙系统HUD渲染器
@@ -94,6 +96,10 @@ public class CultivationHUD {
                     renderRealmText(guiGraphics, font, cultivation, hudX, hudY);
             }
             
+            if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
+                renderFoundationText(guiGraphics, font, cultivation, hudX, hudY);
+            }
+            
             if (CultivationConfig.SHOW_RECOVERY_RATE.get()) {
                 // 绘制恢复速率信息
                     renderRecoveryRateText(guiGraphics, font, cultivation, hudX, hudY);
@@ -126,6 +132,10 @@ public class CultivationHUD {
         
         if (CultivationConfig.SHOW_REALM_INFO.get()) {
             lineCount += 1; // 境界信息
+        }
+        
+        if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
+            lineCount += 1; // 根基信息
         }
         
         if (CultivationConfig.SHOW_RECOVERY_RATE.get()) {
@@ -276,9 +286,10 @@ public class CultivationHUD {
      */
     private static void renderRealmText(GuiGraphics guiGraphics, Font font, ICultivation cultivation, 
                                          int hudX, int hudY) {
-        // 获取境界和等级
+        // 获取境界、小境界和等级
         String realmName = cultivation.getRealm().getDisplayName();
-        int level = cultivation.getLevel();
+        SubRealm subRealm = cultivation.getSubRealm();
+        String subRealmName = subRealm != null ? subRealm.getDisplayName() : null;
         
         // 使用境界自己的颜色
         int realmColor = cultivation.getRealm().getColor() | 0xFF000000;
@@ -292,9 +303,38 @@ public class CultivationHUD {
         
         int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
         
-        // 绘制境界文本
-        String realmText = "境界: " + realmName + " Lv." + level;
+        // 绘制境界文本（追加小境界显示）
+        String realmText = "境界: " + realmName;
+        if (subRealmName != null) {
+            realmText += " " + subRealmName;
+        }
+        // 旧的等级系统已淘汰，不再显示 Lv.
         guiGraphics.drawString(font, realmText, hudX, textY, realmColor);
+    }
+    
+    /**
+     * 渲染根基信息文本
+     */
+    private static void renderFoundationText(GuiGraphics guiGraphics, Font font, ICultivation cultivation,
+                                             int hudX, int hudY) {
+        int foundation = cultivation.getFoundation();
+        FoundationSystem.FoundationDescriptor descriptor = FoundationSystem.describeFoundation(foundation);
+        
+        int lineOffset = 1; // 灵力数值文本
+        if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
+            lineOffset += 2; // 灵根类型和品质
+        }
+        if (CultivationConfig.SHOW_REALM_INFO.get()) {
+            lineOffset += 1; // 境界信息
+        }
+        
+        if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
+            lineOffset += 1; // 根基信息
+        }
+        
+        int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+        String foundationText = String.format("根基: %d (%s)", foundation, descriptor.label());
+        guiGraphics.drawString(font, foundationText, hudX, textY, descriptor.color() | 0xFF000000);
     }
     
     /**
@@ -414,6 +454,10 @@ public class CultivationHUD {
             lineOffset += 1; // 境界信息
         }
         
+        if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
+            lineOffset += 1; // 根基信息
+        }
+        
         if (CultivationConfig.SHOW_RECOVERY_RATE.get()) {
             lineOffset += 1; // 恢复速率信息
         }
@@ -441,7 +485,10 @@ public class CultivationHUD {
         
         // 显示修炼经验条
         int currentExp = cultivation.getCultivationExperience();
-        int requiredExp = cultivation.getRequiredExperienceForLevel();
+        int requiredExp = cultivation.getRequiredExperienceForSubRealm();
+        if (requiredExp <= 0) {
+            requiredExp = cultivation.getRequiredExperienceForLevel();
+        }
         
         if (requiredExp > 0) {
             // 绘制经验文本
@@ -452,7 +499,7 @@ public class CultivationHUD {
             // 绘制经验条
             int expBarWidth = BAR_WIDTH;
             int expBarHeight = 6;
-            int fillWidth = (int) ((double) currentExp / requiredExp * expBarWidth);
+            int fillWidth = (int) (Math.min((double) currentExp / requiredExp, 1.0) * expBarWidth);
             
             // 边框
             guiGraphics.fill(hudX - 1, textY - 1, hudX + expBarWidth + 1, textY, BORDER_COLOR);

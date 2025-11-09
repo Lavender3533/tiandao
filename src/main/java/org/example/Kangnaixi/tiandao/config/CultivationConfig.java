@@ -16,6 +16,7 @@ public class CultivationConfig {
     public static final ForgeConfigSpec.BooleanValue SHOW_SPIRIT_POWER_TEXT;
     public static final ForgeConfigSpec.BooleanValue SHOW_SPIRIT_ROOT_INFO;
     public static final ForgeConfigSpec.BooleanValue SHOW_REALM_INFO;
+    public static final ForgeConfigSpec.BooleanValue SHOW_FOUNDATION_INFO;
     public static final ForgeConfigSpec.BooleanValue SHOW_RECOVERY_RATE;
     
     // HUD位置配置
@@ -52,6 +53,10 @@ public class CultivationConfig {
         SHOW_REALM_INFO = BUILDER
             .comment("Show realm information")
             .define("showRealmInfo", true);
+            
+        SHOW_FOUNDATION_INFO = BUILDER
+            .comment("Show foundation (base) information")
+            .define("showFoundationInfo", true);
             
         SHOW_RECOVERY_RATE = BUILDER
             .comment("Show spirit power recovery rate")
