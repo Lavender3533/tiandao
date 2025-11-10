@@ -8,6 +8,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.KeyBindings;
+import org.example.Kangnaixi.tiandao.client.gui.CultivationHUD;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationStatusScreen;
 import org.example.Kangnaixi.tiandao.config.CultivationConfig;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
@@ -50,6 +51,11 @@ public class ClientTickHandler {
         // 处理HUD切换按键 (H键)
         while (KeyBindings.TOGGLE_HUD.consumeClick()) {
             toggleHud();
+        }
+        
+        // 处理 HUD 详情折叠/展开按键 (J键)
+        while (KeyBindings.TOGGLE_HUD_DETAILS.consumeClick()) {
+            toggleHudDetails();
         }
         
         // 处理术法快捷键（需要按住Shift键）
@@ -114,6 +120,25 @@ public class ClientTickHandler {
     }
     
     /**
+     * 切换 HUD 详情折叠/展开状态（客户端会话态）
+     */
+    private static void toggleHudDetails() {
+        try {
+            CultivationHUD.toggleCollapsed();
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.player != null) {
+                boolean collapsed = CultivationHUD.isCollapsed();
+                String message = collapsed
+                    ? "HUD详情已折叠（仅显示灵力与境界）"
+                    : "HUD详情已展开（显示全部信息）";
+                minecraft.player.sendSystemMessage(Component.literal(message));
+            }
+        } catch (Exception e) {
+            Tiandao.LOGGER.error("切换HUD详情状态时出错", e);
+        }
+    }
+    
+    /**
      * 从术法快捷栏施放术法
      * 
      * @param slotIndex 槽位索引（0-3）
@@ -149,4 +174,3 @@ public class ClientTickHandler {
         }
     }
 }
-

@@ -26,6 +26,71 @@ public class CultivationHUD {
     private static final int BORDER_COLOR = 0xFF000000; // 边框颜色（黑色）
     private static final int LINE_HEIGHT = 12; // 文本行高
     
+    private static boolean collapsed = true;
+    
+    public static void toggleCollapsed() {
+        setCollapsed(!collapsed);
+    }
+    
+    public static void setCollapsed(boolean value) {
+        collapsed = value;
+    }
+    
+    public static boolean isCollapsed() {
+        return collapsed;
+    }
+    
+    private static int getSpiritPowerTextLines() {
+        return CultivationConfig.SHOW_SPIRIT_POWER_TEXT.get() ? 1 : 0;
+    }
+    
+    private static int getSpiritualRootLines() {
+        return (!collapsed && CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) ? 2 : 0;
+    }
+    
+    private static int getRealmLines() {
+        return CultivationConfig.SHOW_REALM_INFO.get() ? 1 : 0;
+    }
+    
+    private static int getFoundationLines() {
+        return (!collapsed && CultivationConfig.SHOW_FOUNDATION_INFO.get()) ? 1 : 0;
+    }
+    
+    private static int getRecoveryLines() {
+        return (!collapsed && CultivationConfig.SHOW_RECOVERY_RATE.get()) ? 1 : 0;
+    }
+    
+    private static int getPracticeLines(ICultivation cultivation) {
+        if (collapsed) {
+            return 0;
+        }
+        return (cultivation != null && cultivation.isPracticing()) ? 2 : 1;
+    }
+    
+    private static int getLineOffsetBeforeRoot() {
+        return getSpiritPowerTextLines();
+    }
+    
+    private static int getLineOffsetBeforeRealm() {
+        return getLineOffsetBeforeRoot() + getSpiritualRootLines();
+    }
+    
+    private static int getLineOffsetBeforeFoundation() {
+        return getLineOffsetBeforeRealm() + getRealmLines();
+    }
+    
+    private static int getLineOffsetBeforeRecovery() {
+        return getLineOffsetBeforeFoundation() + getFoundationLines();
+    }
+    
+    private static int getLineOffsetBeforePractice() {
+        return getLineOffsetBeforeRecovery() + getRecoveryLines();
+    }
+    
+    private static int computeTextY(int hudY, int lineOffset) {
+        return hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+    }
+    
     /**
      * 渲染HUD主入口
      * 注意：直接使用传入的 guiGraphics 参数，不要创建新实例
@@ -86,7 +151,7 @@ public class CultivationHUD {
                     renderSpiritPowerText(guiGraphics, font, cultivation, rootColor, hudX, hudY);
             }
             
-            if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
+            if (!collapsed && CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
                 // 绘制灵根信息
                     renderSpiritualRootText(guiGraphics, font, cultivation, rootColor, hudX, hudY);
             }
@@ -96,17 +161,19 @@ public class CultivationHUD {
                     renderRealmText(guiGraphics, font, cultivation, hudX, hudY);
             }
             
-            if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
+            if (!collapsed && CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
                 renderFoundationText(guiGraphics, font, cultivation, hudX, hudY);
             }
             
-            if (CultivationConfig.SHOW_RECOVERY_RATE.get()) {
+            if (!collapsed && CultivationConfig.SHOW_RECOVERY_RATE.get()) {
                 // 绘制恢复速率信息
                     renderRecoveryRateText(guiGraphics, font, cultivation, hudX, hudY);
             }
             
-            // 绘制修炼状态和经验条
-            renderPracticeStatus(guiGraphics, font, cultivation, hudX, hudY);
+            if (!collapsed) {
+                // ?????????????????
+                renderPracticeStatus(guiGraphics, font, cultivation, hudX, hudY);
+            }
         });
         } catch (Exception e) {
             // 捕获渲染异常，避免游戏崩溃
@@ -124,23 +191,12 @@ public class CultivationHUD {
      */
     private static void drawBackground(GuiGraphics guiGraphics, int hudX, int hudY, ICultivation cultivation) {
         // 计算背景高度（进度条 + 文本行数）
-        int lineCount = 1; // 灵力数值文本
-        
-        if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
-            lineCount += 2; // 灵根类型和品质
-        }
-        
-        if (CultivationConfig.SHOW_REALM_INFO.get()) {
-            lineCount += 1; // 境界信息
-        }
-        
-        if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
-            lineCount += 1; // 根基信息
-        }
-        
-        if (CultivationConfig.SHOW_RECOVERY_RATE.get()) {
-            lineCount += 1; // 恢复速率
-        }
+        int lineCount = getSpiritPowerTextLines();
+        lineCount += getSpiritualRootLines();
+        lineCount += getRealmLines();
+        lineCount += getFoundationLines();
+        lineCount += getRecoveryLines();
+        lineCount += getPracticeLines(cultivation);
         
         int bgHeight = BAR_HEIGHT + (LINE_HEIGHT * lineCount) + 4;
         
@@ -265,8 +321,8 @@ public class CultivationHUD {
         }
                 
                 // 计算文本位置（在灵力数值下方）
-                int lineOffset = 1; // 灵力数值文本
-                int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+                int lineOffset = getLineOffsetBeforeRoot();
+                int textY = computeTextY(hudY, lineOffset);
                 
                 // 绘制灵根类型文本
         guiGraphics.drawString(font, "灵根: " + rootTypeName, hudX, textY, color | 0xFF000000);
@@ -295,13 +351,8 @@ public class CultivationHUD {
         int realmColor = cultivation.getRealm().getColor() | 0xFF000000;
         
         // 计算文本位置（根据已显示的元素动态调整）
-        int lineOffset = 1; // 灵力数值文本
-        
-        if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
-            lineOffset += 2; // 灵根类型和品质
-        }
-        
-        int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+        int lineOffset = getLineOffsetBeforeRealm();
+        int textY = computeTextY(hudY, lineOffset);
         
         // 绘制境界文本（追加小境界显示）
         String realmText = "境界: " + realmName;
@@ -320,19 +371,8 @@ public class CultivationHUD {
         int foundation = cultivation.getFoundation();
         FoundationSystem.FoundationDescriptor descriptor = FoundationSystem.describeFoundation(foundation);
         
-        int lineOffset = 1; // 灵力数值文本
-        if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
-            lineOffset += 2; // 灵根类型和品质
-        }
-        if (CultivationConfig.SHOW_REALM_INFO.get()) {
-            lineOffset += 1; // 境界信息
-        }
-        
-        if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
-            lineOffset += 1; // 根基信息
-        }
-        
-        int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+        int lineOffset = getLineOffsetBeforeFoundation();
+        int textY = computeTextY(hudY, lineOffset);
         String foundationText = String.format("根基: %d (%s)", foundation, descriptor.label());
         guiGraphics.drawString(font, foundationText, hudX, textY, descriptor.color() | 0xFF000000);
     }
@@ -354,17 +394,8 @@ public class CultivationHUD {
         double actualRate = baseRate * environmentalDensity;
         
         // 计算文本位置（根据已显示的元素动态调整）
-        int lineOffset = 1; // 灵力数值文本
-        
-        if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
-            lineOffset += 2; // 灵根类型和品质
-        }
-        
-        if (CultivationConfig.SHOW_REALM_INFO.get()) {
-            lineOffset += 1; // 境界信息
-        }
-        
-        int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+        int lineOffset = getLineOffsetBeforeRecovery();
+        int textY = computeTextY(hudY, lineOffset);
         
         // 获取恢复速率对应的颜色
         int recoveryColor = getRecoveryRateColor(actualRate) | 0xFF000000;
@@ -444,25 +475,8 @@ public class CultivationHUD {
     private static void renderPracticeStatus(GuiGraphics guiGraphics, Font font, ICultivation cultivation, 
                                               int hudX, int hudY) {
         // 计算文本位置（根据已显示的元素动态调整）
-        int lineOffset = 1; // 灵力数值文本
-        
-        if (CultivationConfig.SHOW_SPIRIT_ROOT_INFO.get()) {
-            lineOffset += 2; // 灵根类型和品质
-        }
-        
-        if (CultivationConfig.SHOW_REALM_INFO.get()) {
-            lineOffset += 1; // 境界信息
-        }
-        
-        if (CultivationConfig.SHOW_FOUNDATION_INFO.get()) {
-            lineOffset += 1; // 根基信息
-        }
-        
-        if (CultivationConfig.SHOW_RECOVERY_RATE.get()) {
-            lineOffset += 1; // 恢复速率信息
-        }
-        
-        int textY = hudY + BAR_HEIGHT + 3 + (LINE_HEIGHT * lineOffset);
+        int lineOffset = getLineOffsetBeforePractice();
+        int textY = computeTextY(hudY, lineOffset);
         
         // 显示修炼状态
         if (cultivation.isPracticing()) {

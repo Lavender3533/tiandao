@@ -27,6 +27,12 @@ public class KeyBindings {
         GLFW.GLFW_KEY_H, 
         CATEGORY
     );
+    // 折叠/展开 HUD 详情（J 键）
+    public static final KeyMapping TOGGLE_HUD_DETAILS = new KeyMapping(
+        "key.tiandao.toggle_hud_details",
+        GLFW.GLFW_KEY_J,
+        CATEGORY
+    );
     
     // 术法快捷键（Shift + 数字键）
     public static final KeyMapping CAST_SPELL_1 = new KeyMapping(
@@ -60,6 +66,7 @@ public class KeyBindings {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(CULTIVATION_STATUS);
         event.register(TOGGLE_HUD);
+        event.register(TOGGLE_HUD_DETAILS);
         event.register(CAST_SPELL_1);
         event.register(CAST_SPELL_2);
         event.register(CAST_SPELL_3);
