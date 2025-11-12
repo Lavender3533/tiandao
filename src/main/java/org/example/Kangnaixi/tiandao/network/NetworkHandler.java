@@ -7,6 +7,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.network.packet.SpellBlueprintCreatePacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellCastPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellDataSyncPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellHotbarSetPacket;
@@ -61,7 +62,14 @@ public class NetworkHandler {
             .encoder(SpellHotbarSetPacket::encode)
             .consumerMainThread(SpellHotbarSetPacket::handle)
             .add();
-        
+
+        // 自定义蓝图创建（客户端 -> 服务器）
+        INSTANCE.messageBuilder(SpellBlueprintCreatePacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+            .decoder(SpellBlueprintCreatePacket::new)
+            .encoder(SpellBlueprintCreatePacket::encode)
+            .consumerMainThread(SpellBlueprintCreatePacket::handle)
+            .add();
+
         Tiandao.LOGGER.info("网络数据包已注册（修仙数据 + 术法系统）");
     }
     
@@ -92,5 +100,10 @@ public class NetworkHandler {
     public static void sendSpellHotbarSetToServer(SpellHotbarSetPacket packet) {
         INSTANCE.sendToServer(packet);
     }
+
+    public static void sendBlueprintCreateToServer(SpellBlueprintCreatePacket packet) {
+        INSTANCE.sendToServer(packet);
+    }
+
 }
 

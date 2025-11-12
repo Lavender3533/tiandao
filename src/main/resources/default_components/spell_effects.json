@@ -1,0 +1,117 @@
+{
+  "effects": [
+    {
+      "id": "barrier_shield",
+      "displayName": "灵气护盾",
+      "description": "吸收 10 颗心的伤害并提供 50% 减伤，是灵气护盾基础效果。",
+      "allowedForms": [
+        "self_aura"
+      ],
+      "baseSpiritCost": 50.0,
+      "baseCooldown": 30.0,
+      "complexityWeight": 2.5,
+      "baseValues": {
+        "absorptionHearts": 10.0,
+        "damageReduction": 0.5,
+        "durationSeconds": 10.0
+      },
+      "statusEffects": [
+        {
+          "effectId": "minecraft:absorption",
+          "amplifier": 2,
+          "durationTicks": 200,
+          "ambient": false,
+          "visible": true
+        },
+        {
+          "effectId": "minecraft:resistance",
+          "amplifier": 1,
+          "durationTicks": 200,
+          "ambient": false,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "spirit_regen",
+      "displayName": "聚灵回息",
+      "description": "提升灵力回复 200% 并每秒消耗 2 点灵力，可叠加延长时间。",
+      "allowedForms": [
+        "self_aura",
+        "channel_focus"
+      ],
+      "baseSpiritCost": 20.0,
+      "baseCooldown": 60.0,
+      "complexityWeight": 2.0,
+      "baseValues": {
+        "regenMultiplier": 2.0,
+        "spendPerSecond": 2.0,
+        "durationSeconds": 10.0
+      },
+      "statusEffects": [
+        {
+          "effectId": "minecraft:regeneration",
+          "amplifier": 1,
+          "durationTicks": 200,
+          "ambient": false,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "sense_reveal",
+      "displayName": "灵识探查",
+      "description": "32 格内实体发光并获得夜视，非常适合侦查感知。",
+      "allowedForms": [
+        "radial_pulse"
+      ],
+      "baseSpiritCost": 40.0,
+      "baseCooldown": 40.0,
+      "complexityWeight": 2.2,
+      "baseValues": {
+        "scanRadius": 32.0,
+        "durationSeconds": 20.0
+      },
+      "statusEffects": [
+        {
+          "effectId": "minecraft:night_vision",
+          "amplifier": 0,
+          "durationTicks": 400,
+          "ambient": false,
+          "visible": false
+        },
+        {
+          "effectId": "minecraft:glowing",
+          "amplifier": 0,
+          "durationTicks": 200,
+          "ambient": false,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "wind_blink",
+      "displayName": "御风闪移",
+      "description": "瞬移至前方 10 格并获得 3 秒缓降，常用于御风闪移。",
+      "allowedForms": [
+        "blink_line"
+      ],
+      "baseSpiritCost": 30.0,
+      "baseCooldown": 10.0,
+      "complexityWeight": 1.8,
+      "baseValues": {
+        "distance": 10.0,
+        "slowFallSeconds": 3.0
+      },
+      "statusEffects": [
+        {
+          "effectId": "minecraft:slow_falling",
+          "amplifier": 0,
+          "durationTicks": 60,
+          "ambient": false,
+          "visible": true
+        }
+      ]
+    }
+  ]
+}

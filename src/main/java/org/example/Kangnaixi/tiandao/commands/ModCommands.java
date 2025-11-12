@@ -6,6 +6,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.commands.SpellBlueprintCommand;
 
 /**
  * 天道修仙系统命令注册类
@@ -19,6 +20,7 @@ public class ModCommands {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         // 注册主命令 /tiandao 和别名 /cultivation
         TiandaoCommand.register(event.getDispatcher());
+        SpellBlueprintCommand.register(event.getDispatcher());
         
         // 注册测试命令 /tiandaotest
         TiandaoTestCommand.register(event.getDispatcher());

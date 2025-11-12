@@ -1,0 +1,84 @@
+# ============================================
+# Java / Gradle 构建输出
+# ============================================
+# 编译输出
+bin/
+build/
+out/
+target/
+*.class
+*.jar
+!gradle-wrapper.jar
+
+# Gradle
+.gradle/
+gradle-8.8/
+gradle-wrapper.properties.bak
+*.gradle.bak
+
+# ============================================
+# IDE 配置文件
+# ============================================
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.eclipse/
+.settings/
+.classpath
+.project
+
+# ============================================
+# 游戏运行时文件
+# ============================================
+run/
+saves/
+*.log
+crash-reports/
+logs/
+
+# ============================================
+# 文档和规范文件夹（项目特定）
+# ============================================
+# 忽略所有文档文件夹
+**/docs/
+# 忽略所有构建输出或规范文件夹
+**/openspec/
+# 忽略变更提案文件夹
+**/changes/
+# 忽略特定文件（注意路径）
+../*.bat
+../*.md
+../init.gradle
+../AI_MEMORY_AND_TEMPLATE_GUIDE.md
+../README.md
+../AGENTS
+../CLAUDE.md
+../COMMMANDS.md
+../CULTIVATION_GUIDE
+
+# ============================================
+# 系统文件
+# ============================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.tmp
+
+# ============================================
+# 其他
+# ============================================
+*.zip
+*.tar.gz
+*.rar
+!gradle-wrapper.jar
+
+# 项目排除路径
+/.trae/
+CULTIVATION_GUIDE.md
+CLAUDE.md
+AGENTS.md
+build_compile_errors.txt

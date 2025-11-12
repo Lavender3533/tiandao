@@ -1,0 +1,59 @@
+{
+  "templates": [
+    {
+      "id": "shield_standard",
+      "displayName": "灵气护盾",
+      "description": "练气三层可用的基础护盾术。",
+      "formId": "self_aura",
+      "effectId": "barrier_shield",
+      "augmentIds": [
+        "duration_plus",
+        "intensity_plus"
+      ],
+      "recommendedRealm": "QI_CONDENSATION",
+      "recommendedSubRealmLevel": 3,
+      "notes": "教学章节 #1 奖励"
+    },
+    {
+      "id": "wind_step",
+      "displayName": "御风术",
+      "description": "用于探索与躲避的机动术式。",
+      "formId": "blink_line",
+      "effectId": "wind_blink",
+      "augmentIds": [
+        "distance_plus"
+      ],
+      "recommendedRealm": "QI_CONDENSATION",
+      "recommendedSubRealmLevel": 5,
+      "notes": "教学章节 #2"
+    },
+    {
+      "id": "sense_scan",
+      "displayName": "灵识探查",
+      "description": "20 秒光环感知附近实体。",
+      "formId": "radial_pulse",
+      "effectId": "sense_reveal",
+      "augmentIds": [
+        "radius_plus",
+        "duration_plus"
+      ],
+      "recommendedRealm": "QI_CONDENSATION",
+      "recommendedSubRealmLevel": 7,
+      "notes": "教学章节 #3"
+    },
+    {
+      "id": "gather_focus",
+      "displayName": "聚灵术",
+      "description": "在台座上打坐，引导灵力快速恢复。",
+      "formId": "channel_focus",
+      "effectId": "spirit_regen",
+      "augmentIds": [
+        "duration_plus",
+        "intensity_plus"
+      ],
+      "recommendedRealm": "QI_CONDENSATION",
+      "recommendedSubRealmLevel": 9,
+      "notes": "教学章节 #4"
+    }
+  ]
+}

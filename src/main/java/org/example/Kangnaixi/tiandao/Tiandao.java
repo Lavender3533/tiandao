@@ -30,6 +30,9 @@ import org.example.Kangnaixi.tiandao.blocks.CultivationAltarBlock;
 import org.example.Kangnaixi.tiandao.blocks.SpiritGatheringBlock;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
 import org.example.Kangnaixi.tiandao.events.CultivationEvents;
+import org.example.Kangnaixi.tiandao.item.SpellJadeSlipItem;
+import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprintLibrary;
+import org.example.Kangnaixi.tiandao.spell.builder.SpellComponentLibrary;
 import org.example.Kangnaixi.tiandao.menu.ModMenuTypes;
 import org.example.Kangnaixi.tiandao.blockentity.CultivationAltarBlockEntity;
 import org.example.Kangnaixi.tiandao.client.event.ParticleEventHandler;
@@ -45,11 +48,10 @@ public class Tiandao {
 
     // Define mod id in a common place for everything to reference
     public static final String MODID = "tiandao";
-    public static final String MOD_ID = "tiandao"; // 为了兼容性添加
-    // Directly reference a slf4j logger
+    public static final String MOD_ID = "tiandao"; // 娑撹桨绨￠崗鐓庮啇閹勫潑閸?    // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
     
-    // 能力注册
+    // 閼宠棄濮忓▔銊ュ斀
     public static final Capability<ICultivation> CULTIVATION_CAPABILITY = CapabilityManager.get(new CapabilityToken<ICultivation>() {});
     // Create a Deferred Register to hold Blocks which will all be registered under the "tiandao" namespace
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
@@ -60,31 +62,34 @@ public class Tiandao {
     // Create a Deferred Register to hold BlockEntityTypes which will all be registered under the "tiandao" namespace
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID);
 
-    // 修仙方块
+    // 娣囶喕绮伴弬鐟版健
     public static final RegistryObject<Block> CULTIVATION_ALTAR = BLOCKS.register("cultivation_altar", 
         () -> new CultivationAltarBlock(0.2f, 0.1f));
     public static final RegistryObject<Block> SPIRIT_GATHERING_BLOCK = BLOCKS.register("spirit_gathering_block", 
         () -> new SpiritGatheringBlock(5.0f, 20 * 5, 5));
     
-    // 修仙方块物品
+    // 娣囶喕绮伴弬鐟版健閻椻晛鎼?
     public static final RegistryObject<Item> CULTIVATION_ALTAR_ITEM = ITEMS.register("cultivation_altar", 
         () -> new BlockItem(CULTIVATION_ALTAR.get(), new Item.Properties()));
     public static final RegistryObject<Item> SPIRIT_GATHERING_BLOCK_ITEM = ITEMS.register("spirit_gathering_block", 
         () -> new BlockItem(SPIRIT_GATHERING_BLOCK.get(), new Item.Properties()));
+    public static final RegistryObject<Item> SPELL_JADE_SLIP = ITEMS.register("spell_jade_slip",
+        () -> new SpellJadeSlipItem(new Item.Properties().stacksTo(16)));
 
-    // 方块实体类型
+    // 閺傜懓娼＄€圭偘缍嬬猾璇茬€?
     public static final RegistryObject<BlockEntityType<CultivationAltarBlockEntity>> CULTIVATION_ALTAR_BLOCK_ENTITY = 
             BLOCK_ENTITY_TYPES.register("cultivation_altar_block_entity", 
                     () -> BlockEntityType.Builder.of(CultivationAltarBlockEntity::new, CULTIVATION_ALTAR.get()).build(null));
 
-    // 修仙创造模式标签页
+    // 娣囶喕绮伴崚娑⑩偓鐘衬佸蹇旂垼缁涢箖銆?
     public static final RegistryObject<CreativeModeTab> CULTIVATION_TAB = CREATIVE_MODE_TABS.register("cultivation_tab", () -> CreativeModeTab.builder()
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> CULTIVATION_ALTAR_ITEM.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
-                // 添加修仙方块
+                // 濞ｈ濮炴穱顔荤舶閺傜懓娼?
                 output.accept(CULTIVATION_ALTAR_ITEM.get());
                 output.accept(SPIRIT_GATHERING_BLOCK_ITEM.get());
+                output.accept(SPELL_JADE_SLIP.get());
             }).build());
 
     @SuppressWarnings("removal")
@@ -119,7 +124,7 @@ public class Tiandao {
         modEventBus.addListener(this::addCreative);
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
-        // 注意：ModLoadingContext在此版本仍然可用，虽然标记为即将弃用
+        // 注册配置文件
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, CultivationConfig.SPEC);
     }
@@ -127,7 +132,7 @@ public class Tiandao {
     private void commonSetup(final FMLCommonSetupEvent event) {
         // Some common setup code
         LOGGER.info("天道修仙系统初始化");
-        LOGGER.info("修炼台、灵气聚集方块已注册");
+        LOGGER.info("功法与阵法注册完毕");
         
         // 注册网络处理器
         event.enqueueWork(() -> {
@@ -150,6 +155,10 @@ public class Tiandao {
             org.example.Kangnaixi.tiandao.spell.SpellRegistry.getInstance();
             LOGGER.info("术法注册表已初始化");
         });
+        
+        // 初始化术法组件与蓝图库
+        event.enqueueWork(SpellComponentLibrary::init);
+        event.enqueueWork(SpellBlueprintLibrary::init);
     }
     
     private void registerCapabilities(final RegisterCapabilitiesEvent event) {
@@ -159,13 +168,13 @@ public class Tiandao {
     // Add the example block item to the building blocks tab
     private void addCreative(BuildCreativeModeTabContentsEvent event)
     {
-        // 修仙物品已经添加到专门的创造模式标签页
+        // 添加物品到创造模式标签页
     }
     // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
-        LOGGER.info("天道修仙系统服务器启动");
+        LOGGER.info("天道修仙服务器启动");
     }
     
     /**
@@ -184,7 +193,7 @@ public class Tiandao {
         public static void onClientSetup(FMLClientSetupEvent event)
         {
             // Some client setup code
-            LOGGER.info("天道修仙系统客户端初始化");
+            LOGGER.info("天道修仙客户端初始化");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
             
             // 注册客户端事件
@@ -194,8 +203,8 @@ public class Tiandao {
         @SubscribeEvent
         public static void registerParticleProviders(net.minecraftforge.client.event.RegisterParticleProvidersEvent event)
         {
-            // 注册粒子提供者
-            ModParticles.registerParticleProviders(event);
+            // 濞夈劌鍞界划鎺戠摍閹绘劒绶甸懓?            ModParticles.registerParticleProviders(event);
         }
     }
 }
+

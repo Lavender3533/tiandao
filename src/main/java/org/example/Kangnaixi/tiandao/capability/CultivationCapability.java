@@ -6,6 +6,7 @@ import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
 import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
 import org.example.Kangnaixi.tiandao.cultivation.SubRealm;
 import org.example.Kangnaixi.tiandao.cultivation.TechniqueChecker;
+import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprint;
 
 /**
  * 修仙能力实现类
@@ -43,6 +44,7 @@ public class CultivationCapability implements ICultivation {
     private String[] spellHotbar = new String[4]; // 术法快捷栏（4个槽位）
     private java.util.Map<String, Long> spellCooldowns = new java.util.HashMap<>(); // 术法冷却时间 <术法ID, 冷却结束时间戳>
     private java.util.Map<String, Long> activeSpells = new java.util.HashMap<>(); // 激活的持续性术法 <术法ID, 效果结束时间戳>
+    private final java.util.List<SpellBlueprint> knownBlueprints = new java.util.ArrayList<>(); // 已掌握的术法蓝图
     
     @Override
     public SpiritualRootType getSpiritualRoot() {
@@ -365,6 +367,10 @@ public class CultivationCapability implements ICultivation {
         this.spiritPower = other.getSpiritPower();
         this.maxSpiritPower = other.getMaxSpiritPower();
         this.timeAcceleration = other.getTimeAcceleration();
+        this.knownBlueprints.clear();
+        for (SpellBlueprint blueprint : other.getKnownBlueprints()) {
+            this.knownBlueprints.add(SpellBlueprint.fromNBT(blueprint.toNBT()));
+        }
     }
     
     @Override
@@ -683,5 +689,40 @@ public class CultivationCapability implements ICultivation {
             return false;
         }
         return true;
+    }
+
+    // ==================== 术法蓝图 ====================
+
+    @Override
+    public void clearBlueprints() {
+        this.knownBlueprints.clear();
+    }
+
+    @Override
+    public java.util.List<SpellBlueprint> getKnownBlueprints() {
+        return new java.util.ArrayList<>(knownBlueprints);
+    }
+
+    @Override
+    public void learnBlueprint(SpellBlueprint blueprint) {
+        if (blueprint == null) {
+            return;
+        }
+        if (!knowsBlueprint(blueprint.getId())) {
+            this.knownBlueprints.add(SpellBlueprint.fromNBT(blueprint.toNBT()));
+        }
+    }
+
+    @Override
+    public boolean knowsBlueprint(String blueprintId) {
+        if (blueprintId == null) {
+            return false;
+        }
+        for (SpellBlueprint blueprint : knownBlueprints) {
+            if (blueprint.getId().equals(blueprintId)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -10,6 +10,7 @@ import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
 import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
 import org.example.Kangnaixi.tiandao.cultivation.SubRealm;
+import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprint;
 
 /**
  * 修仙能力接口
@@ -410,4 +411,24 @@ public interface ICultivation {
      * 检查术法是否激活
      */
     boolean isSpellActive(String spellId);
+
+    /**
+     * 获取已掌握的术法蓝图
+     */
+    java.util.List<SpellBlueprint> getKnownBlueprints();
+
+    /**
+     * 学习新的术法蓝图
+     */
+    void learnBlueprint(SpellBlueprint blueprint);
+
+    /**
+     * 清空已掌握的蓝图（用于读取 NBT 前重置）
+     */
+    void clearBlueprints();
+
+    /**
+     * 查询是否已掌握指定蓝图
+     */
+    boolean knowsBlueprint(String blueprintId);
 }

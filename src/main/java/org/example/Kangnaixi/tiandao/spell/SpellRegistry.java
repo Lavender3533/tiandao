@@ -32,19 +32,8 @@ public class SpellRegistry {
      * 注册默认术法
      */
     private void registerDefaultSpells() {
-        // 灵气护盾 - 练气期3层
-        registerSpell(new org.example.Kangnaixi.tiandao.spell.spells.SpiritualShieldSpell());
-        
-        // 御风术 - 练气期5层
-        registerSpell(new org.example.Kangnaixi.tiandao.spell.spells.WindStepSpell());
-        
-        // 灵识探查 - 练气期7层
-        registerSpell(new org.example.Kangnaixi.tiandao.spell.spells.SpiritualSenseSpell());
-        
-        // 聚灵术 - 练气期9层
-        registerSpell(new org.example.Kangnaixi.tiandao.spell.spells.SpiritGatheringSpell());
-        
-        Tiandao.LOGGER.info("术法注册表初始化完成，共注册 {} 个术法", spells.size());
+        // 新的术法系统将在配置接入前保持空表
+        Tiandao.LOGGER.info("当前没有默认注册的术法，等待简化术法系统接管");
     }
     
     /**

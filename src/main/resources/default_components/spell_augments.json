@@ -1,0 +1,76 @@
+{
+  "augments": [
+    {
+      "id": "duration_plus",
+      "displayName": "延长术式",
+      "description": "为持续类术法额外延长 5 秒。",
+      "targetParam": "durationSeconds",
+      "stepValue": 5.0,
+      "maxStacks": 2,
+      "complexityWeight": 0.4,
+      "spiritCostMultiplier": 0.1,
+      "cooldownMultiplier": 0.05,
+      "allowedForms": [
+        "self_aura",
+        "radial_pulse",
+        "channel_focus"
+      ]
+    },
+    {
+      "id": "radius_plus",
+      "displayName": "扩散阵列",
+      "description": "半径每层 +4 格（上限 40 格）。",
+      "targetParam": "radius",
+      "stepValue": 4.0,
+      "maxStacks": 2,
+      "complexityWeight": 0.5,
+      "spiritCostMultiplier": 0.15,
+      "allowedForms": [
+        "self_aura",
+        "radial_pulse"
+      ]
+    },
+    {
+      "id": "intensity_plus",
+      "displayName": "灵压增幅",
+      "description": "使护盾/聚灵效果强度 +25%。",
+      "targetParam": "intensity",
+      "stepValue": 0.25,
+      "maxStacks": 3,
+      "complexityWeight": 0.6,
+      "spiritCostMultiplier": 0.2,
+      "allowedEffects": [
+        "barrier_shield",
+        "spirit_regen"
+      ]
+    },
+    {
+      "id": "distance_plus",
+      "displayName": "飞步延伸",
+      "description": "闪移距离 +4 格。",
+      "targetParam": "distance",
+      "stepValue": 4.0,
+      "maxStacks": 2,
+      "complexityWeight": 0.4,
+      "spiritCostMultiplier": 0.1,
+      "allowedForms": [
+        "blink_line"
+      ]
+    },
+    {
+      "id": "color_override",
+      "displayName": "灵光着色",
+      "description": "仅改变渲染颜色，不影响数值。",
+      "targetParam": "color",
+      "stepValue": 0.0,
+      "maxStacks": 1,
+      "complexityWeight": 0.0,
+      "allowedForms": [
+        "self_aura",
+        "radial_pulse",
+        "channel_focus",
+        "blink_line"
+      ]
+    }
+  ]
+}

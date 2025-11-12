@@ -7,6 +7,7 @@ import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootQuality;
 import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
 import org.example.Kangnaixi.tiandao.cultivation.SubRealm;
+import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprint;
 import javax.annotation.Nullable;
 
 /**
@@ -115,9 +116,17 @@ public class CultivationStorage {
         }
         tag.put("activeSpells", activeSpellsTag);
         
-        Tiandao.LOGGER.info("保存修仙数据到NBT: 灵力={}/{}, 境界={}, 已分配灵根={}, 修炼经验={}, 已学功法数={}, 已解锁术法数={}", 
+        // 保存术法蓝图
+        net.minecraft.nbt.ListTag blueprintList = new net.minecraft.nbt.ListTag();
+        for (SpellBlueprint blueprint : instance.getKnownBlueprints()) {
+            blueprintList.add(blueprint.toNBT());
+        }
+        tag.put("spellBlueprints", blueprintList);
+        
+        Tiandao.LOGGER.info("保存修仙数据到NBT: 灵力={}/{}, 境界={}, 已分配灵根={}, 修炼经验={}, 已学功法数={}, 已解锁术法数={}, 已掌握蓝图数={}", 
             spiritPower, maxSpiritPower, instance.getRealm(), instance.hasRootAssigned(), 
-            instance.getCultivationExperience(), instance.getLearnedTechniques().size(), instance.getUnlockedSpells().size());
+            instance.getCultivationExperience(), instance.getLearnedTechniques().size(), instance.getUnlockedSpells().size(),
+            instance.getKnownBlueprints().size());
         
         return tag;
     }
@@ -318,8 +327,19 @@ public class CultivationStorage {
             }
         }
         
-        Tiandao.LOGGER.info("从NBT加载修仙数据完成: 灵力={}/{}, 境界={}, 修炼经验={}, 已学功法数={}, 已解锁术法数={}, 实例={}", 
+        // 读取术法蓝图
+        instance.clearBlueprints();
+        if (nbt.contains("spellBlueprints")) {
+            net.minecraft.nbt.ListTag blueprintList = nbt.getList("spellBlueprints", 10); // 10 = CompoundTag
+            for (int i = 0; i < blueprintList.size(); i++) {
+                CompoundTag blueprintTag = blueprintList.getCompound(i);
+                instance.learnBlueprint(SpellBlueprint.fromNBT(blueprintTag));
+            }
+        }
+        
+        Tiandao.LOGGER.info("从NBT加载修仙数据完成: 灵力={}/{}, 境界={}, 修炼经验={}, 已学功法数={}, 已解锁术法数={}, 蓝图数={}, 实例={}", 
             spiritPower, maxSpiritPower, instance.getRealm(), instance.getCultivationExperience(), 
-            instance.getLearnedTechniques().size(), instance.getUnlockedSpells().size(), System.identityHashCode(instance));
+            instance.getLearnedTechniques().size(), instance.getUnlockedSpells().size(),
+            instance.getKnownBlueprints().size(), System.identityHashCode(instance));
     }
 }

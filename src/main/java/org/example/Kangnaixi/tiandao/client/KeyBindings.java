@@ -58,6 +58,12 @@ public class KeyBindings {
         GLFW.GLFW_KEY_4, 
         CATEGORY
     );
+
+    public static final KeyMapping OPEN_SPELL_EDITOR = new KeyMapping(
+        "key.tiandao.open_spell_editor",
+        GLFW.GLFW_KEY_B,
+        CATEGORY
+    );
     
     /**
      * 注册按键绑定
@@ -71,6 +77,7 @@ public class KeyBindings {
         event.register(CAST_SPELL_2);
         event.register(CAST_SPELL_3);
         event.register(CAST_SPELL_4);
+        event.register(OPEN_SPELL_EDITOR);
         Tiandao.LOGGER.info("修仙按键绑定已注册（包括术法快捷键）");
             }
         }

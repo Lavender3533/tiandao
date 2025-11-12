@@ -365,6 +365,8 @@ public class CultivationEvents {
         }
     }
     
+    private static final double DEATH_EXPERIENCE_LOSS_RATIO = 0.25D;
+
     /**
      * 玩家死亡事件 - 降低根基值
      */
@@ -372,6 +374,32 @@ public class CultivationEvents {
     public static void onPlayerDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             FoundationSystem.onPlayerDeath(player);
+
+            player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
+                boolean changed = false;
+
+                double previousSpiritPower = cultivation.getSpiritPower();
+                if (previousSpiritPower > 0) {
+                    cultivation.setSpiritPower(0);
+                    player.sendSystemMessage(Component.literal("§c你的灵力在死亡中尽数散去。"), false);
+                    changed = true;
+                }
+
+                int currentExp = cultivation.getCultivationExperience();
+                if (currentExp > 0) {
+                    int expLoss = Math.max(1, (int)Math.floor(currentExp * DEATH_EXPERIENCE_LOSS_RATIO));
+                    int newExp = Math.max(0, currentExp - expLoss);
+                    cultivation.setCultivationExperience(newExp);
+                    player.sendSystemMessage(Component.literal(
+                        String.format("§c修炼受阻！修炼经验: %d → %d (-%d)", currentExp, newExp, expLoss)
+                    ), false);
+                    changed = true;
+                }
+
+                if (changed) {
+                    NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), player);
+                }
+            });
         }
     }
     
