@@ -10,7 +10,7 @@ import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.KeyBindings;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationHUD;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationStatusScreen;
-import org.example.Kangnaixi.tiandao.client.gui.SpellBlueprintEditorScreen;
+import org.example.Kangnaixi.tiandao.client.gui.ArsNouveauStyleSpellEditorScreen;
 import org.example.Kangnaixi.tiandao.config.CultivationConfig;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.network.packet.SpellCastPacket;
@@ -61,7 +61,7 @@ public class ClientTickHandler {
 
         while (KeyBindings.OPEN_SPELL_EDITOR.consumeClick()) {
             if (minecraft.player != null && minecraft.screen == null) {
-                minecraft.setScreen(new SpellBlueprintEditorScreen());
+                minecraft.setScreen(new ArsNouveauStyleSpellEditorScreen());
             }
         }
         

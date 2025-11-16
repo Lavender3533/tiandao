@@ -31,8 +31,10 @@ import org.example.Kangnaixi.tiandao.blocks.SpiritGatheringBlock;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
 import org.example.Kangnaixi.tiandao.events.CultivationEvents;
 import org.example.Kangnaixi.tiandao.item.SpellJadeSlipItem;
+import org.example.Kangnaixi.tiandao.spell.SpellSystemInitializer;
 import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprintLibrary;
 import org.example.Kangnaixi.tiandao.spell.builder.SpellComponentLibrary;
+import org.example.Kangnaixi.tiandao.spell.entity.ModEntityTypes;
 import org.example.Kangnaixi.tiandao.menu.ModMenuTypes;
 import org.example.Kangnaixi.tiandao.blockentity.CultivationAltarBlockEntity;
 import org.example.Kangnaixi.tiandao.client.event.ParticleEventHandler;
@@ -115,6 +117,9 @@ public class Tiandao {
         // Register the particle types
         ModParticles.register(modEventBus);
 
+        // Register the spell entity types
+        ModEntityTypes.register(modEventBus);
+
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new CultivationEvents());
@@ -159,6 +164,7 @@ public class Tiandao {
         // 初始化术法组件与蓝图库
         event.enqueueWork(SpellComponentLibrary::init);
         event.enqueueWork(SpellBlueprintLibrary::init);
+        SpellSystemInitializer.initialize();
     }
     
     private void registerCapabilities(final RegisterCapabilitiesEvent event) {

@@ -1,0 +1,23 @@
+{
+  "projectiles": [
+    {
+      "id": "tiandao:projectile/basic",
+      "speed": 1.6,
+      "gravity": 0.01,
+      "lifetime": 200,
+      "maxTargets": 1,
+      "pierceBlocks": false,
+      "trail": "minecraft:crit"
+    },
+    {
+      "id": "tiandao:projectile/heavy",
+      "speed": 1.0,
+      "gravity": 0.03,
+      "lifetime": 160,
+      "maxTargets": 3,
+      "pierceBlocks": true,
+      "trail": "minecraft:smoke"
+    }
+  ]
+}
+

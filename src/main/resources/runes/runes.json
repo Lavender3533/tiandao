@@ -1,0 +1,204 @@
+{
+  "runes": [
+    {
+      "id": "self",
+      "name": "自身",
+      "tier": "HUANG",
+      "category": "TRIGGER",
+      "description": "以施法者为起点",
+      "spiritCost": 5.0,
+      "cooldown": 1.0,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#4FC3F7",
+      "inputs": 0,
+      "outputs": 1,
+      "parameters": {}
+    },
+    {
+      "id": "touch",
+      "name": "触摸",
+      "tier": "HUANG",
+      "category": "TRIGGER",
+      "description": "触摸目标触发",
+      "spiritCost": 3.0,
+      "cooldown": 0.5,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#4FC3F7",
+      "inputs": 0,
+      "outputs": 1,
+      "parameters": {
+        "range": 3.0
+      }
+    },
+    {
+      "id": "projectile",
+      "name": "弹道",
+      "tier": "HUANG",
+      "category": "TRIGGER",
+      "description": "发射弹丸到目标位置",
+      "spiritCost": 8.0,
+      "cooldown": 2.0,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#4FC3F7",
+      "inputs": 0,
+      "outputs": 1,
+      "parameters": {
+        "speed": 1.5,
+        "maxDistance": 30.0
+      }
+    },
+    {
+      "id": "circle",
+      "name": "圆形",
+      "tier": "HUANG",
+      "category": "SHAPE",
+      "description": "球形区域效果",
+      "spiritCost": 6.0,
+      "cooldown": 0.5,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#66BB6A",
+      "inputs": 1,
+      "outputs": 1,
+      "parameters": {
+        "radius": 5.0,
+        "minRadius": 3.0,
+        "maxRadius": 8.0
+      }
+    },
+    {
+      "id": "cone",
+      "name": "扇形",
+      "tier": "HUANG",
+      "category": "SHAPE",
+      "description": "锥形扇面区域",
+      "spiritCost": 7.0,
+      "cooldown": 1.0,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 2,
+      "color": "#66BB6A",
+      "inputs": 1,
+      "outputs": 1,
+      "parameters": {
+        "angle": 60.0,
+        "distance": 8.0,
+        "minAngle": 30.0,
+        "maxAngle": 120.0
+      }
+    },
+    {
+      "id": "line",
+      "name": "直线",
+      "tier": "HUANG",
+      "category": "SHAPE",
+      "description": "沿直线方向施放",
+      "spiritCost": 5.0,
+      "cooldown": 0.5,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#66BB6A",
+      "inputs": 1,
+      "outputs": 1,
+      "parameters": {
+        "distance": 10.0,
+        "width": 1.0
+      }
+    },
+    {
+      "id": "damage",
+      "name": "伤害",
+      "tier": "HUANG",
+      "category": "EFFECT",
+      "description": "造成物理伤害",
+      "spiritCost": 7.0,
+      "cooldown": 1.0,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#E1BEE7",
+      "inputs": 1,
+      "outputs": 0,
+      "parameters": {
+        "damage": 5.0,
+        "minDamage": 3.0,
+        "maxDamage": 10.0
+      }
+    },
+    {
+      "id": "heal",
+      "name": "治疗",
+      "tier": "HUANG",
+      "category": "EFFECT",
+      "description": "恢复生命值",
+      "spiritCost": 6.0,
+      "cooldown": 2.0,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#E1BEE7",
+      "inputs": 1,
+      "outputs": 0,
+      "parameters": {
+        "healing": 5.0,
+        "minHealing": 3.0,
+        "maxHealing": 8.0
+      }
+    },
+    {
+      "id": "push",
+      "name": "推动",
+      "tier": "HUANG",
+      "category": "EFFECT",
+      "description": "击退目标",
+      "spiritCost": 5.0,
+      "cooldown": 1.0,
+      "unlockRealm": "QI_CONDENSATION",
+      "unlockLevel": 1,
+      "color": "#E1BEE7",
+      "inputs": 1,
+      "outputs": 0,
+      "parameters": {
+        "force": 1.5,
+        "minForce": 0.5,
+        "maxForce": 3.0
+      }
+    },
+    {
+      "id": "explosion",
+      "name": "爆炸",
+      "tier": "XUAN",
+      "category": "EFFECT",
+      "description": "在目标位置产生爆炸",
+      "spiritCost": 12.0,
+      "cooldown": 3.0,
+      "unlockRealm": "FOUNDATION_ESTABLISHMENT",
+      "unlockLevel": 1,
+      "color": "#FF9800",
+      "inputs": 1,
+      "outputs": 0,
+      "parameters": {
+        "explosionPower": 3.0,
+        "radius": 5.0,
+        "damage": 10.0
+      }
+    },
+    {
+      "id": "teleport",
+      "name": "传送",
+      "tier": "XUAN",
+      "category": "EFFECT",
+      "description": "传送到目标位置",
+      "spiritCost": 15.0,
+      "cooldown": 5.0,
+      "unlockRealm": "FOUNDATION_ESTABLISHMENT",
+      "unlockLevel": 3,
+      "color": "#9C27B0",
+      "inputs": 1,
+      "outputs": 0,
+      "parameters": {
+        "maxDistance": 20.0
+      }
+    }
+  ]
+}

@@ -70,7 +70,21 @@ public class NetworkHandler {
             .consumerMainThread(SpellBlueprintCreatePacket::handle)
             .add();
 
-        Tiandao.LOGGER.info("网络数据包已注册（修仙数据 + 术法系统）");
+        // 打开符文编辑器（服务器 -> 客户端）
+        INSTANCE.messageBuilder(OpenRuneEditorPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(OpenRuneEditorPacket::new)
+            .encoder(OpenRuneEditorPacket::encode)
+            .consumerMainThread(OpenRuneEditorPacket::handle)
+            .add();
+
+        // 打开节点术法编辑器（服务器 -> 客户端）
+        INSTANCE.messageBuilder(OpenNodeEditorPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(OpenNodeEditorPacket::new)
+            .encoder(OpenNodeEditorPacket::encode)
+            .consumerMainThread(OpenNodeEditorPacket::handle)
+            .add();
+
+        Tiandao.LOGGER.info("网络数据包已注册（修仙数据 + 术法系统 + 符文编辑器 + 节点编辑器）");
     }
     
     /**
@@ -103,6 +117,20 @@ public class NetworkHandler {
 
     public static void sendBlueprintCreateToServer(SpellBlueprintCreatePacket packet) {
         INSTANCE.sendToServer(packet);
+    }
+
+    /**
+     * 向指定玩家发送打开符文编辑器数据包
+     */
+    public static void sendOpenRuneEditorToPlayer(OpenRuneEditorPacket packet, ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    /**
+     * 向指定玩家发送打开节点编辑器数据包
+     */
+    public static void sendOpenNodeEditorToPlayer(OpenNodeEditorPacket packet, ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 
 }
