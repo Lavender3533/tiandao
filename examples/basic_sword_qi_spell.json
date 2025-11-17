@@ -1,0 +1,61 @@
+{
+  "id": "tiandao:spells/basic_sword_qi",
+  "metadata": {
+    "name": "基础剑气术",
+    "description": "以指诀为源，驱动剑气向前斩击，对路径上的敌人造成伤害。",
+    "required_realm": "FOUNDATION",
+    "required_stage": 1,
+    "rarity": "COMMON"
+  },
+  "source": {
+    "id": "finger",
+    "display_name": "指诀",
+    "description": "单手结印，适合轻快小术，出手迅速。"
+  },
+  "carrier": {
+    "id": "sword_qi",
+    "display_name": "剑气",
+    "description": "向前发出斩击波，对路径上的敌人造成伤害。"
+  },
+  "form": {
+    "id": "instant",
+    "display_name": "瞬发",
+    "description": "无需蓄力，点击即发，适合小术与连招。"
+  },
+  "attributes": [
+    {
+      "id": "sword",
+      "display_name": "剑意",
+      "layer": "INTENT",
+      "magnitude": 1.0,
+      "scaling": {
+        "damage": 0.1
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "armor_break",
+      "display_name": "破甲",
+      "payload": {
+        "power": 0.8
+      }
+    }
+  ],
+  "base_stats": {
+    "damage": 15.0,
+    "speed": 1.2,
+    "range": 12.0,
+    "channel_ticks": 0,
+    "duration_ticks": 0,
+    "cooldown": 5.0,
+    "spirit_cost": 20.0
+  },
+  "sword_qi_enhancement": {
+    "damage_multiplier": 1.3,
+    "speed_multiplier": 1.2,
+    "range_multiplier": 1.1,
+    "requires_sword": true,
+    "requires_sword_intent": true
+  }
+}

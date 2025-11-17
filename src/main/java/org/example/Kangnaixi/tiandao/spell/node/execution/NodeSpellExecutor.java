@@ -1,11 +1,13 @@
-﻿package org.example.Kangnaixi.tiandao.spell.node.execution;
+package org.example.Kangnaixi.tiandao.spell.node.execution;
 
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.spell.debug.SpellDebugConfig;
-import org.example.Kangnaixi.tiandao.spell.node.NodeComponent;`nimport org.example.Kangnaixi.tiandao.spell.node.execution.ComponentExecutor;`nimport org.example.Kangnaixi.tiandao.spell.node.execution.ExecutorRegistry;
+import org.example.Kangnaixi.tiandao.spell.node.NodeComponent;
+import org.example.Kangnaixi.tiandao.spell.node.execution.ComponentExecutor;
+import org.example.Kangnaixi.tiandao.spell.node.execution.ExecutorRegistry;
 import org.example.Kangnaixi.tiandao.spell.node.NodeSpell;
 import org.example.Kangnaixi.tiandao.spell.node.SpellNode;
 import org.example.Kangnaixi.tiandao.spell.node.TriggerType;
@@ -166,6 +168,17 @@ public class NodeSpellExecutor {
     }
 
     public record ExecutionResult(boolean success, String message, NodeSpellContext context) {
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public NodeSpellContext getContext() {
+            return context;
+        }
     }
 }
 

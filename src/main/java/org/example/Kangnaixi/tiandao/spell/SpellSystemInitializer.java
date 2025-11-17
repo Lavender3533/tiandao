@@ -1,6 +1,7 @@
 package org.example.Kangnaixi.tiandao.spell;
 
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.Config;
 import org.example.Kangnaixi.tiandao.spell.effect.EffectRegistry;
 import org.example.Kangnaixi.tiandao.spell.node.ComponentRegistry;
 import org.example.Kangnaixi.tiandao.spell.node.execution.ExecutorRegistry;
@@ -19,6 +20,12 @@ public class SpellSystemInitializer {
     public static synchronized void initialize() {
         if (initialized) {
             Tiandao.LOGGER.warn("SpellSystemInitializer already ran.");
+            return;
+        }
+
+        if (!Config.enableLegacyNodeSpell) {
+            Tiandao.LOGGER.info("Legacy NodeSpell pipeline 已禁用，使用 Cultivation Spell Editor 定义。");
+            initialized = true;
             return;
         }
 

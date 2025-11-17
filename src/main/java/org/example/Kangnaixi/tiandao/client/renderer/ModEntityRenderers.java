@@ -1,4 +1,4 @@
-﻿package org.example.Kangnaixi.tiandao.client.renderer;
+package org.example.Kangnaixi.tiandao.client.renderer;
 
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;

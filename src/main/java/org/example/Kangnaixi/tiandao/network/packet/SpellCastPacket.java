@@ -1,39 +1,37 @@
 package org.example.Kangnaixi.tiandao.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.example.Kangnaixi.tiandao.Tiandao;
-import org.example.Kangnaixi.tiandao.network.NetworkHandler;
-import org.example.Kangnaixi.tiandao.spell.SpellData;
-import org.example.Kangnaixi.tiandao.spell.SpellRegistry;
 import org.example.Kangnaixi.tiandao.cultivation.ExperienceConversionSystem;
+import org.example.Kangnaixi.tiandao.network.NetworkHandler;
+import org.example.Kangnaixi.tiandao.spell.SpellRegistry;
+import org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition;
+import org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService;
 
 import java.util.function.Supplier;
 
 /**
- * 术法施放请求数据包
- * 客户端 -> 服务器：玩家请求施放术法
+ * 客户端 -> 服务器：施法请求。
  */
 public class SpellCastPacket {
-    
+
     private final String spellId;
-    
+
     public SpellCastPacket(String spellId) {
         this.spellId = spellId;
     }
-    
+
     public SpellCastPacket(FriendlyByteBuf buf) {
         this.spellId = buf.readUtf();
     }
-    
+
     public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(spellId);
     }
-    
-    /**
-     * 处理数据包（服务器端）
-     */
+
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
@@ -41,58 +39,52 @@ public class SpellCastPacket {
             if (player == null) {
                 return;
             }
-            
+
             player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-                // 检查术法是否已解锁
                 if (!cultivation.hasSpell(spellId)) {
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§c你还没有解锁该术法！"));
+                    player.sendSystemMessage(Component.literal("§c你还没有解锁该术法！"));
                     return;
                 }
-                
-                // 获取术法数据
-                SpellData spell = SpellRegistry.getInstance().getSpellById(spellId);
+
+                SpellDefinition spell = SpellRegistry.getInstance().getSpellById(spellId);
                 if (spell == null) {
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§c术法不存在: " + spellId));
+                    player.sendSystemMessage(Component.literal("§c术法不存在: " + spellId));
                     return;
                 }
-                
-                // 尝试施放术法
-                boolean success = spell.cast(player, cultivation);
-                
-                if (success) {
-                    // 触发经验转化（消耗的灵气转化为经验）
-                    ExperienceConversionSystem.onSpiritConsumed(player, spell.getSpiritCost());
-                    
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "§a成功施放术法：" + spell.getName() + " §7(消耗 " + spell.getSpiritCost() + " 灵力)"
+
+                SpellCastingService.CastResult castResult = SpellCastingService.cast(player, cultivation, spell);
+                if (castResult.success()) {
+                    double cost = castResult.runtimeResult().numbers().spiritCost();
+                    ExperienceConversionSystem.onSpiritConsumed(player, cost);
+                    player.sendSystemMessage(Component.literal(
+                        "§a成功施放术法 §e" + spell.getMetadata().displayName()
+                            + " §7(消耗 " + String.format("%.1f", cost) + " 灵力)"
                     ));
                 } else {
-                    // 检查失败原因
-                    if (spell.isOnCooldown()) {
-                        int remaining = spell.getCooldownRemaining();
-                        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                            "§c术法冷却中，剩余 " + remaining + " 秒"
-                        ));
-                    } else if (cultivation.getSpiritPower() < spell.getSpiritCost()) {
-                        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                            "§c灵力不足！需要 " + spell.getSpiritCost() + " 点灵力"
-                        ));
-                    } else if (cultivation.getRealm().ordinal() < spell.getRequiredRealm().ordinal()) {
-                        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                            "§c境界不足！需要 " + spell.getRequiredRealm().getDisplayName()
-                        ));
-                    } else {
-                        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                            "§c无法施放该术法"
-                        ));
-                    }
+                    handleFailure(player, spell, castResult);
                 }
-                
-                // 同步数据到客户端
+
                 NetworkHandler.sendSpellDataToPlayer(new SpellDataSyncPacket(cultivation), player);
             });
         });
         context.setPacketHandled(true);
     }
-}
 
+    private void handleFailure(ServerPlayer player, SpellDefinition spell, SpellCastingService.CastResult result) {
+        if (result.failureReason() == SpellCastingService.CastResult.FailureReason.COOLDOWN) {
+            player.sendSystemMessage(Component.literal("§c术法冷却中，剩余 "
+                + result.cooldownRemaining() + " 秒"));
+            return;
+        }
+        if (result.failureReason() == SpellCastingService.CastResult.FailureReason.SPIRIT) {
+            player.sendSystemMessage(Component.literal(
+                "§c灵力不足！需要 " + String.format("%.1f", result.expectedSpirit())
+                    + " 当前 " + String.format("%.1f", result.currentSpirit())
+            ));
+            return;
+        }
+        player.sendSystemMessage(Component.literal(
+            "§c无法施放术法: " + spell.getMetadata().displayName()
+        ));
+    }
+}

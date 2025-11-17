@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
 import org.example.Kangnaixi.tiandao.item.SpellJadeSlipItem;
-import org.example.Kangnaixi.tiandao.spell.SpellData;
+import org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition;
 import org.example.Kangnaixi.tiandao.spell.SpellRegistry;
 import org.example.Kangnaixi.tiandao.spell.SpellLocalization;
 import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprint;
@@ -89,7 +89,7 @@ public class SpellHudOverlay {
             int slotY = startY;
             
             String spellId = hotbar[i];
-            SpellData spell = null;
+            SpellDefinition spell = null;
             if (spellId != null) {
                 spell = SpellRegistry.getInstance().getSpellById(spellId);
             }
@@ -110,7 +110,8 @@ public class SpellHudOverlay {
             // 濡傛灉妲戒綅鏈夋湳娉曪紝缁樺埗鏈硶淇℃伅
             if (spell != null) {
                 // 缁樺埗鏈硶鍚嶇О棣栧瓧绗︼紙绠€鍖栨樉绀猴級
-                String spellIcon = spell.getName().substring(0, Math.min(2, spell.getName().length()));
+                String displayName = spell.getMetadata().displayName();
+                String spellIcon = displayName.substring(0, Math.min(2, displayName.length()));
                 int textX = slotX + (SLOT_SIZE - font.width(spellIcon)) / 2;
                 int textY = slotY + (SLOT_SIZE - font.lineHeight) / 2;
                 guiGraphics.drawString(font, spellIcon, textX, textY, TEXT_COLOR);
@@ -119,7 +120,7 @@ public class SpellHudOverlay {
                 int cooldownRemaining = cultivation.getSpellCooldownRemaining(spellId);
                 if (cooldownRemaining > 0) {
                     // 璁＄畻鍐峰嵈杩涘害锛?.0 = 瀹屽叏鍐峰嵈锛?.0 = 鍐峰嵈涓級
-                    float cooldownProgress = (float) cooldownRemaining / spell.getCooldown();
+                    float cooldownProgress = (float) cooldownRemaining / (float) spell.getBaseStats().cooldownSeconds();
                     
                     // 鑾峰彇骞虫粦鏃嬭浆瑙掑害
                     Minecraft mc = Minecraft.getInstance();
@@ -195,7 +196,7 @@ public class SpellHudOverlay {
             String spellId = entry.getKey();
             long endTime = entry.getValue();
             
-            SpellData spell = SpellRegistry.getInstance().getSpellById(spellId);
+            SpellDefinition spell = SpellRegistry.getInstance().getSpellById(spellId);
             if (spell == null) {
                 continue;
             }
@@ -204,7 +205,7 @@ public class SpellHudOverlay {
             int remainingSeconds = (int) Math.max(0, (endTime - currentTime) / 1000);
             
             // 缁樺埗鏈硶鍚嶇О鍜屽墿浣欐椂闂?
-            String statusText = String.format("搂e%s 搂7(%ds)", spell.getName(), remainingSeconds);
+            String statusText = String.format("§e%s §7(%ds)", spell.getMetadata().displayName(), remainingSeconds);
             guiGraphics.drawString(font, statusText, startX, currentY, 0xFFFFFFFF);
             
             // 缁樺埗绠€鍗曠殑杩涘害鏉?
@@ -213,7 +214,8 @@ public class SpellHudOverlay {
             int barX = startX + font.width(statusText) + 4;
             int barY = currentY + 2;
             
-            float progress = (float) remainingSeconds / (spell.getDuration() / 1000);
+            float totalSeconds = Math.max(1f, spell.getBaseStats().durationTicks() / 20f);
+            float progress = (float) remainingSeconds / totalSeconds;
             int fillWidth = (int) (barWidth * progress);
             
             // 鑳屾櫙

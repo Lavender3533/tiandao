@@ -12,16 +12,20 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
 import org.example.Kangnaixi.tiandao.Tiandao;
-import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
-import org.example.Kangnaixi.tiandao.cultivation.FoundationSystem;
-import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
-import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootQuality;
-import org.example.Kangnaixi.tiandao.cultivation.SpiritualRootType;
+import org.example.Kangnaixi.tiandao.capability.CultivationCapability;
+import org.example.Kangnaixi.tiandao.capability.ICultivation;
+import org.example.Kangnaixi.tiandao.cultivation.*;
+import org.example.Kangnaixi.tiandao.practice.PracticeMethod;
+import org.example.Kangnaixi.tiandao.practice.PracticeRegistry;
+import org.example.Kangnaixi.tiandao.technique.TechniqueData;
+import org.example.Kangnaixi.tiandao.technique.TechniqueRegistry;
 
 /**
  * 天道修仙系统主命令
  */
 public class TiandaoCommand {
+
+    private static final String DEFAULT_PRACTICE_METHOD = "meditation";
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         // 注册主命令 /tiandao
@@ -254,7 +258,7 @@ public class TiandaoCommand {
         context.getSource().sendSuccess(() -> Component.literal("  /tiandao help - 完整帮助"), false);
         return 1;
     }
-    
+
     private static int showDetailedHelp(CommandContext<CommandSourceStack> context) {
         context.getSource().sendSuccess(() -> Component.literal("=== 天道修仙系统命令帮助 ==="), false);
         context.getSource().sendSuccess(() -> Component.literal(""), false);
@@ -610,470 +614,332 @@ public class TiandaoCommand {
     }
     
     /**
-     * 发送灵根分配消息
-     */
-    private static void sendRootAssignmentMessage(ServerPlayer player, org.example.Kangnaixi.tiandao.capability.ICultivation cultivation) {
-        SpiritualRootType rootType = cultivation.getSpiritualRoot();
-        
-        if (cultivation instanceof org.example.Kangnaixi.tiandao.capability.CultivationCapability) {
-            org.example.Kangnaixi.tiandao.capability.CultivationCapability cap = (org.example.Kangnaixi.tiandao.capability.CultivationCapability) cultivation;
-            SpiritualRoot root = cap.getSpiritualRootObject();
-            
-            if (rootType == SpiritualRootType.NONE) {
-                // 凡人消息
-                player.sendSystemMessage(Component.literal("§7=== 天命测定 ==="));
-                player.sendSystemMessage(Component.literal("§8你是凡人之躯，无法感知灵气。"));
-                player.sendSystemMessage(Component.literal("§8需寻求机缘，方可踏入修仙之路..."));
-            } else {
-                // 有灵根
-                SpiritualRootQuality quality = root.getQuality();
-                String qualityName = quality.getDisplayName();
-                
-                player.sendSystemMessage(Component.literal("§6=== 天命测定 ==="));
-                player.sendSystemMessage(Component.literal("§f你拥有 " + rootType.getDisplayName() + "，品质：§" + getColorCode(quality) + qualityName));
-                player.sendSystemMessage(Component.literal("§7修炼效率：§a×" + String.format("%.1f", quality.getCultivationBonus())));
-                
-                // 特殊消息
-                if (quality == SpiritualRootQuality.PERFECT) {
-                    player.sendSystemMessage(Component.literal("§e§l⚡ 天降祥瑞！你拥有传说中的天灵根！ ⚡"));
-                } else if (quality == SpiritualRootQuality.EXCELLENT) {
-                    player.sendSystemMessage(Component.literal("§d恭喜！极品灵根，千年难遇！"));
-                }
-            }
-        }
-    }
-    
-    /**
-     * 获取品质对应的颜色代码
-     */
-    private static String getColorCode(SpiritualRootQuality quality) {
-        switch (quality) {
-            case POOR:
-                return "7"; // 灰色
-            case NORMAL:
-                return "f"; // 白色
-            case GOOD:
-                return "a"; // 绿色
-            case EXCELLENT:
-                return "d"; // 紫色
-            case PERFECT:
-                return "6"; // 金色
-            default:
-                return "f";
-        }
-    }
-    
-    /**
-     * 开始修炼
-     */
-    private static int practiceStart(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        
-        // 使用打坐修炼方式
-        boolean success = org.example.Kangnaixi.tiandao.cultivation.PracticeTickHandler.startPractice(player, "meditation");
-        
-        if (success) {
-            context.getSource().sendSuccess(() -> Component.literal("§a开始打坐修炼"), false);
-        }
-        
-        return success ? 1 : 0;
-    }
-    
-    /**
-     * 停止修炼
-     */
-    private static int practiceStop(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        
-        player.getCapability(org.example.Kangnaixi.tiandao.Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            if (cultivation.isPracticing()) {
-                org.example.Kangnaixi.tiandao.cultivation.PracticeTickHandler.stopPractice(player, "manual");
-                context.getSource().sendSuccess(() -> Component.literal("§7已停止修炼"), false);
-            } else {
-                player.sendSystemMessage(Component.literal("§c你当前没有在修炼"));
-            }
-        });
-        
-        return 1;
-    }
-    
-    /**
-     * 查看修炼状态
-     */
-    private static int practiceStatus(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        
-        player.getCapability(org.example.Kangnaixi.tiandao.Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            context.getSource().sendSuccess(() -> Component.literal("§6=== 修炼状态 ==="), false);
-            
-            // 修炼状态
-            if (cultivation.isPracticing()) {
-                String methodName = org.example.Kangnaixi.tiandao.practice.PracticeRegistry.getInstance()
-                    .getPracticeMethod(cultivation.getCurrentPracticeMethod())
-                    .getDisplayName();
-                context.getSource().sendSuccess(() -> Component.literal("§a修炼中: " + methodName), false);
-            } else {
-                context.getSource().sendSuccess(() -> Component.literal("§7未在修炼"), false);
-            }
-            
-            // 修炼经验
-            int currentExp = cultivation.getCultivationExperience();
-            int requiredExp = cultivation.getRequiredExperienceForLevel();
-            double progress = (double) currentExp / requiredExp * 100;
-            
-            context.getSource().sendSuccess(() -> Component.literal(
-                String.format("§f修炼经验: §e%d§f/§e%d §7(%.1f%%)", currentExp, requiredExp, progress)
-            ), false);
-            
-            // 经验进度条
-            int bars = (int) (progress / 5); // 20格进度条
-            StringBuilder progressBar = new StringBuilder("§8[");
-            for (int i = 0; i < 20; i++) {
-                if (i < bars) {
-                    progressBar.append("§a█");
-                } else {
-                    progressBar.append("§7█");
-                }
-            }
-            progressBar.append("§8]");
-            context.getSource().sendSuccess(() -> Component.literal(progressBar.toString()), false);
-            
-            // 是否可以突破
-            if (currentExp >= requiredExp) {
-                context.getSource().sendSuccess(() -> Component.literal("§e§l⚡ 经验已满，可尝试突破！"), false);
-            }
-        });
-        
-        return 1;
-    }
-    
-    // === 功法管理命令 ===
-    
-    /**
-     * 查看已学习的功法列表
-     */
-    private static int techniqueList(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        
-        player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            context.getSource().sendSuccess(() -> Component.literal("§6=== 已学习的功法 ==="), false);
-            
-            java.util.List<org.example.Kangnaixi.tiandao.technique.TechniqueData> techniques = cultivation.getLearnedTechniques();
-            
-            if (techniques.isEmpty()) {
-                context.getSource().sendSuccess(() -> Component.literal("§7你还没有学习任何功法"), false);
-            } else {
-                for (org.example.Kangnaixi.tiandao.technique.TechniqueData technique : techniques) {
-                    boolean isEquipped = cultivation.getEquippedTechnique() != null && 
-                                        cultivation.getEquippedTechnique().getId().equals(technique.getId());
-                    String status = isEquipped ? " §a[已装备]" : "";
-                    
-                    context.getSource().sendSuccess(() -> Component.literal(String.format(
-                        "§e%s §7(Lv.%d) §8[%d/%d经验]%s",
-                        technique.getName(),
-                        technique.getLevel(),
-                        technique.getExperience(),
-                        technique.getMaxExperience(),
-                        status
-                    )), false);
-                    
-                    context.getSource().sendSuccess(() -> Component.literal(
-                        "§7  效率: §a" + String.format("%.1f%%", technique.getEfficiencyBonus() * 100)
-                    ), false);
-                }
-            }
-        });
-        
-        return 1;
-    }
-    
-    /**
-     * 学习功法
-     */
-    private static int techniqueLearn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        String techniqueId = StringArgumentType.getString(context, "techniqueId");
-        
-        // 从注册表获取功法模板
-        org.example.Kangnaixi.tiandao.technique.TechniqueData techniqueTemplate = 
-            org.example.Kangnaixi.tiandao.technique.TechniqueRegistry.getInstance().getTechniqueById(techniqueId);
-        
-        if (techniqueTemplate == null) {
-            context.getSource().sendFailure(Component.literal("§c功法不存在: " + techniqueId));
-            return 0;
-        }
-        
-        player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            // 检查是否已经学习
-            if (cultivation.hasTechnique(techniqueId)) {
-                context.getSource().sendFailure(Component.literal("§c你已经学习了这个功法！"));
-                return;
-            }
-            
-            // 学习功法
-            if (cultivation.learnTechnique(techniqueTemplate)) {
-                context.getSource().sendSuccess(() -> Component.literal(
-                    "§a成功学习功法: §e" + techniqueTemplate.getName()
-                ), true);
-                
-                // 同步到客户端
-                org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
-                    new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
-                    player
-                );
-                
-                Tiandao.LOGGER.info("玩家 {} 学习了功法: {}", player.getName().getString(), techniqueTemplate.getName());
-            } else {
-                context.getSource().sendFailure(Component.literal("§c学习功法失败！"));
-            }
-        });
-        
-        return 1;
-    }
-    
-    /**
-     * 装备功法
-     */
-    private static int techniqueEquip(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        String techniqueId = StringArgumentType.getString(context, "techniqueId");
-        
-        player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            // 检查是否学习了该功法
-            if (!cultivation.hasTechnique(techniqueId)) {
-                context.getSource().sendFailure(Component.literal("§c你还没有学习这个功法！"));
-                return;
-            }
-            
-            org.example.Kangnaixi.tiandao.technique.TechniqueData technique = cultivation.getTechniqueById(techniqueId);
-            
-            // 装备功法
-            if (cultivation.equipTechnique(techniqueId)) {
-                context.getSource().sendSuccess(() -> Component.literal(
-                    "§a成功装备功法: §e" + technique.getName()
-                ), true);
-                
-                context.getSource().sendSuccess(() -> Component.literal(
-                    "§7当前效率加成: §a" + String.format("%.1f%%", technique.getEfficiencyBonus() * 100)
-                ), false);
-                
-                // 同步到客户端
-                org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
-                    new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
-                    player
-                );
-                
-                Tiandao.LOGGER.info("玩家 {} 装备了功法: {}", player.getName().getString(), technique.getName());
-            } else {
-                context.getSource().sendFailure(Component.literal("§c装备功法失败！"));
-            }
-        });
-        
-        return 1;
-    }
-    
-    /**
-     * 卸下功法
-     */
-    private static int techniqueUnequip(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        
-        player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            if (!cultivation.hasEquippedTechnique()) {
-                context.getSource().sendFailure(Component.literal("§c你当前没有装备任何功法！"));
-                return;
-            }
-            
-            String techniqueName = cultivation.getEquippedTechnique().getName();
-            
-            // 卸下功法（暂时没有副作用）
-            cultivation.unequipTechnique();
-            
-            context.getSource().sendSuccess(() -> Component.literal(
-                "§7已卸下功法: §e" + techniqueName
-            ), true);
-            
-            // 同步到客户端
-            org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
-                new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
-                player
-            );
-            
-            Tiandao.LOGGER.info("玩家 {} 卸下了功法: {}", player.getName().getString(), techniqueName);
-        });
-        
-        return 1;
-    }
-    
-    // ==================== 术法命令 ====================
-    
-    /**
      * 列出已解锁的术法
      */
     private static int spellList(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
-        
+
         player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
             java.util.List<String> unlockedSpells = cultivation.getUnlockedSpells();
-            
+
             if (unlockedSpells.isEmpty()) {
-                context.getSource().sendFailure(Component.literal("§c你还没有解锁任何术法！"));
+                context.getSource().sendFailure(Component.literal("§c你还没有解锁任何术法"));
                 return;
             }
-            
-            context.getSource().sendSuccess(() -> Component.literal("§6§l【已解锁术法】"), false);
-            
+
+            context.getSource().sendSuccess(() -> Component.literal("§6§l已解锁的术法"), false);
+
             for (String spellId : unlockedSpells) {
-                org.example.Kangnaixi.tiandao.spell.SpellData spell = 
+                org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition spell =
                     org.example.Kangnaixi.tiandao.spell.SpellRegistry.getInstance().getSpellById(spellId);
-                
+
                 if (spell != null) {
                     int cooldownRemaining = cultivation.getSpellCooldownRemaining(spellId);
                     boolean isActive = cultivation.isSpellActive(spellId);
-                    
+
                     final String statusText;
                     if (isActive) {
                         statusText = " §a[激活中]";
                     } else if (cooldownRemaining > 0) {
                         statusText = " §c[冷却: " + cooldownRemaining + "s]";
                     } else {
-                        statusText = " §7[就绪]";
+                        statusText = " §7[可用]";
                     }
-                    
-                    final String spellName = spell.getName();
-                    final String spellDesc = spell.getDescription().split("\n")[0];
-                    final double spiritCost = spell.getSpiritCost();
-                    final int cooldown = spell.getCooldown();
+
+                    final String displayName = spell.getMetadata().displayName();
+                    final String spellDesc = spell.getMetadata().description().split("\n")[0];
+                    final double spiritCost = spell.getBaseStats().spiritCost();
+                    final double cooldown = spell.getBaseStats().cooldownSeconds();
                     final String id = spellId;
-                    
+
                     context.getSource().sendSuccess(() -> Component.literal(
                         String.format("§e%s §7- §f%s%s",
-                            spellName,
+                            displayName,
                             spellDesc,
                             statusText)
                     ), false);
-                    
+
                     context.getSource().sendSuccess(() -> Component.literal(
-                        String.format("  §7消耗: §b%.0f灵力 §7| 冷却: §b%ds §7| ID: §8%s",
+                        String.format("  §7灵力: §b%.0f点 §7| §b冷却: §b%.1fs §7| ID: §8%s",
                             spiritCost,
                             cooldown,
                             id)
                     ), false);
                 }
             }
-            
-            context.getSource().sendSuccess(() -> Component.literal("§7共 §a" + unlockedSpells.size() + " §7个术法"), false);
+
+            context.getSource().sendSuccess(() -> Component.literal("§7共 §a" + unlockedSpells.size() + " §7条术法"), false);
         });
-        
+
         return 1;
-    }
-    
+    }    /**
+     * 解锁术法
+     */
     /**
      * 解锁术法
      */
     private static int spellUnlock(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         String spellId = StringArgumentType.getString(context, "spellId");
-        
-        // 检查术法是否存在
-        org.example.Kangnaixi.tiandao.spell.SpellData spell = 
+
+        org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition spell =
             org.example.Kangnaixi.tiandao.spell.SpellRegistry.getInstance().getSpellById(spellId);
-        
+
         if (spell == null) {
             context.getSource().sendFailure(Component.literal("§c术法不存在: " + spellId));
             return 0;
         }
-        
+
         player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            // 检查是否已解锁
             if (cultivation.hasSpell(spellId)) {
-                context.getSource().sendFailure(Component.literal("§c你已经解锁了这个术法！"));
+                context.getSource().sendFailure(Component.literal("§c你已经掌握该术法"));
                 return;
             }
-            
-            // 解锁术法
+
             cultivation.unlockSpell(spellId);
-            
+
             context.getSource().sendSuccess(() -> Component.literal(""), false);
-            context.getSource().sendSuccess(() -> Component.literal("§6§l【习得新术法】"), false);
-            context.getSource().sendSuccess(() -> Component.literal("§e" + spell.getName()), false);
+            context.getSource().sendSuccess(() -> Component.literal("§6§l恭喜获得新术法"), false);
+            context.getSource().sendSuccess(() -> Component.literal("§e" + spell.getMetadata().displayName()), false);
             context.getSource().sendSuccess(() -> Component.literal(""), false);
-            context.getSource().sendSuccess(() -> Component.literal("§7" + spell.getDescription()), false);
+            context.getSource().sendSuccess(() -> Component.literal("§7" + spell.getMetadata().description()), false);
             context.getSource().sendSuccess(() -> Component.literal(""), false);
             context.getSource().sendSuccess(() -> Component.literal(
-                String.format("§b消耗: §f%.0f灵力 §7| §b冷却: §f%ds",
-                    spell.getSpiritCost(),
-                    spell.getCooldown())
+                String.format("§b灵力: §f%.0f点 §7| §b冷却: §f%.1fs",
+                    spell.getBaseStats().spiritCost(),
+                    spell.getBaseStats().cooldownSeconds())
             ), false);
-            
-            // 播放解锁音效
+
             player.playSound(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
-            
-            // 同步到客户端
+
             org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
                 new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
                 player
             );
-            
-            Tiandao.LOGGER.info("玩家 {} 解锁了术法: {}", player.getName().getString(), spell.getName());
+
+            Tiandao.LOGGER.info("玩家 {} 解锁术法: {}", player.getName().getString(), spell.getMetadata().displayName());
         });
-        
+
         return 1;
-    }
-    
-    /**
+    }    /**
      * 释放术法
+     */
+    /**
+     * 通过命令施法
      */
     private static int spellCast(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         String spellId = StringArgumentType.getString(context, "spellId");
-        
+
         player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
-            // 检查是否已解锁
             if (!cultivation.hasSpell(spellId)) {
-                context.getSource().sendFailure(Component.literal("§c你还没有解锁这个术法！"));
+                context.getSource().sendFailure(Component.literal("§c你还没有解锁该术法"));
                 return;
             }
-            
-            // 获取术法
-            org.example.Kangnaixi.tiandao.spell.SpellData spell = 
+
+            org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition spell =
                 org.example.Kangnaixi.tiandao.spell.SpellRegistry.getInstance().getSpellById(spellId);
-            
+
             if (spell == null) {
                 context.getSource().sendFailure(Component.literal("§c术法不存在: " + spellId));
                 return;
             }
-            
-            // 尝试释放术法
-            if (spell.cast(player, cultivation)) {
+
+            org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService.CastResult castResult =
+                org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService.cast(player, cultivation, spell);
+
+            if (castResult.success()) {
+                double cost = castResult.runtimeResult().numbers().spiritCost();
                 context.getSource().sendSuccess(() -> Component.literal(
-                    "§a成功释放术法: §e" + spell.getName()
-                ), true);
-                
-                // 同步到客户端
-                org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
-                    new org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket(cultivation),
-                    player
-                );
+                    "§a成功施放术法: §e" + spell.getMetadata().displayName()), true);
+                ExperienceConversionSystem.onSpiritConsumed(player, cost);
+            } else if (castResult.failureReason() == org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService.CastResult.FailureReason.COOLDOWN) {
+                context.getSource().sendFailure(Component.literal("§c术法冷却中，剩余 " + castResult.cooldownRemaining() + " 秒"));
+            } else if (castResult.failureReason() == org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService.CastResult.FailureReason.SPIRIT) {
+                context.getSource().sendFailure(Component.literal(
+                    String.format("§c灵力不足，需要 %.0f 当前 %.0f",
+                        castResult.expectedSpirit(),
+                        castResult.currentSpirit())));
             } else {
-                // 释放失败，给出原因
-                if (spell.isOnCooldown()) {
-                    int remaining = spell.getCooldownRemaining();
-                    context.getSource().sendFailure(Component.literal(
-                        "§c术法冷却中！还需 " + remaining + " 秒"
-                    ));
-                } else if (cultivation.getSpiritPower() < spell.getSpiritCost()) {
-                    context.getSource().sendFailure(Component.literal(
-                        String.format("§c灵力不足！需要 %.0f，当前 %.0f",
-                            spell.getSpiritCost(),
-                            cultivation.getSpiritPower())
-                    ));
-                } else {
-                    context.getSource().sendFailure(Component.literal("§c释放术法失败！"));
-                }
+                context.getSource().sendFailure(Component.literal("§c无法施放该术法"));
             }
         });
-        
+
         return 1;
+    }
+
+    private static int practiceStart(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        String methodId = resolvePracticeMethodId();
+        if (methodId == null) {
+            context.getSource().sendFailure(Component.literal("§c尚未注册任何修炼方式"));
+            return 0;
+        }
+        boolean started = PracticeTickHandler.startPractice(player, methodId);
+        if (started) {
+            context.getSource().sendSuccess(() -> Component.literal("§a开始修炼方式: §f" + methodId), false);
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int practiceStop(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
+            if (cultivation.isPracticing()) {
+                PracticeTickHandler.stopPractice(player, "command");
+                context.getSource().sendSuccess(() -> Component.literal("§e已停止修炼"), false);
+            } else {
+                context.getSource().sendSuccess(() -> Component.literal("§7当前未在修炼"), false);
+            }
+        });
+        return 1;
+    }
+
+    private static int practiceStatus(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            if (cultivation.isPracticing()) {
+                String methodId = cultivation.getCurrentPracticeMethod();
+                PracticeMethod method = PracticeRegistry.getInstance().getPracticeMethod(methodId);
+                String display = method != null ? method.getDisplayName() : methodId;
+                context.getSource().sendSuccess(() -> Component.literal("§a正在修炼: §f" + display), false);
+            } else {
+                context.getSource().sendSuccess(() -> Component.literal("§7当前未在修炼"), false);
+            }
+            return 1;
+        }).orElse(0);
+    }
+
+    private static String resolvePracticeMethodId() {
+        PracticeRegistry registry = PracticeRegistry.getInstance();
+        if (registry.isRegistered(DEFAULT_PRACTICE_METHOD)) {
+            return DEFAULT_PRACTICE_METHOD;
+        }
+        return registry.getAllPracticeIds().stream().findFirst().orElse(null);
+    }
+
+    private static int techniqueList(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            java.util.List<TechniqueData> learned = cultivation.getLearnedTechniques();
+            if (learned.isEmpty()) {
+                context.getSource().sendSuccess(() -> Component.literal("§7尚未学习任何功法"), false);
+                return 0;
+            }
+            context.getSource().sendSuccess(() -> Component.literal("§6=== 已学习功法 ==="), false);
+            TechniqueData equipped = cultivation.getEquippedTechnique();
+            for (TechniqueData technique : learned) {
+                boolean isEquipped = equipped != null && equipped.getId().equals(technique.getId());
+                String prefix = isEquipped ? "§a[已装备] " : "§7";
+                String line = prefix + technique.getName() + " §8(Lv." + technique.getLevel() + ")";
+                context.getSource().sendSuccess(() -> Component.literal(line), false);
+            }
+            return 1;
+        }).orElse(0);
+    }
+
+    private static int techniqueLearn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        String techniqueId = StringArgumentType.getString(context, "techniqueId");
+        TechniqueData template = TechniqueRegistry.getInstance().getTechniqueById(techniqueId);
+        if (template == null) {
+            context.getSource().sendFailure(Component.literal("§c功法不存在: " + techniqueId));
+            return 0;
+        }
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            if (cultivation.hasTechnique(techniqueId)) {
+                context.getSource().sendFailure(Component.literal("§e已经掌握该功法"));
+                return 0;
+            }
+            if (template.getRequiredRoot() != SpiritualRootType.NONE
+                && cultivation.getSpiritualRoot() != template.getRequiredRoot()) {
+                context.getSource().sendFailure(Component.literal("§c灵根不符合要求"));
+                return 0;
+            }
+            CultivationRealm playerRealm = cultivation.getRealm();
+            if (playerRealm.ordinal() < template.getRequiredRealm().ordinal()) {
+                context.getSource().sendFailure(Component.literal("§c境界不足，无法学习"));
+                return 0;
+            }
+            if (playerRealm == template.getRequiredRealm()
+                && cultivation.getLevel() < template.getRequiredLevel()) {
+                context.getSource().sendFailure(Component.literal("§c境界层级不足，无法学习"));
+                return 0;
+            }
+            boolean learned = cultivation.learnTechnique(template);
+            if (learned) {
+                context.getSource().sendSuccess(() -> Component.literal("§a学会功法: §f" + template.getName()), false);
+                return 1;
+            }
+            context.getSource().sendFailure(Component.literal("§c学习功法失败"));
+            return 0;
+        }).orElse(0);
+    }
+
+    private static int techniqueEquip(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        String techniqueId = StringArgumentType.getString(context, "techniqueId");
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            if (!cultivation.hasTechnique(techniqueId)) {
+                context.getSource().sendFailure(Component.literal("§c尚未学会该功法"));
+                return 0;
+            }
+            if (cultivation.equipTechnique(techniqueId)) {
+                context.getSource().sendSuccess(() -> Component.literal("§a已装备功法: §f" + techniqueId), false);
+                return 1;
+            }
+            context.getSource().sendFailure(Component.literal("§c装备功法失败"));
+            return 0;
+        }).orElse(0);
+    }
+
+    private static int techniqueUnequip(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            if (!cultivation.hasEquippedTechnique()) {
+                context.getSource().sendFailure(Component.literal("§7当前没有装备功法"));
+                return 0;
+            }
+            cultivation.unequipTechnique();
+            context.getSource().sendSuccess(() -> Component.literal("§e已卸下当前功法"), false);
+            return 1;
+        }).orElse(0);
+    }
+
+    private static void sendRootAssignmentMessage(ServerPlayer player, ICultivation cultivation) {
+        SpiritualRootType rootType = cultivation.getSpiritualRoot();
+        SpiritualRoot root = null;
+        if (cultivation instanceof CultivationCapability cap) {
+            root = cap.getSpiritualRootObject();
+        }
+        if (rootType == SpiritualRootType.NONE || root == null) {
+            player.sendSystemMessage(Component.literal("§7=== 天命测定 ==="));
+            player.sendSystemMessage(Component.literal("§8你是凡人之躯，无法感知灵气。"));
+            player.sendSystemMessage(Component.literal("§8需寻求机缘，方可踏入修仙之路。"));
+            return;
+        }
+        SpiritualRootQuality quality = root.getQuality();
+        String qualityName = quality != null ? quality.getDisplayName() : "未知";
+        String colorCode = quality != null ? toColorCode(quality.getColor()) : "§f";
+        player.sendSystemMessage(Component.literal("§6=== 天命测定 ==="));
+        player.sendSystemMessage(Component.literal("§f你拥有 " + rootType.getDisplayName() + "，品质：" + colorCode + qualityName));
+        if (quality != null) {
+            player.sendSystemMessage(Component.literal("§7修炼效率：§a×" + String.format("%.1f", quality.getCultivationBonus())));
+            if (quality == SpiritualRootQuality.PERFECT) {
+                player.sendSystemMessage(Component.literal("§e§l天降祥瑞！你拥有传说中的天灵根！"));
+            } else if (quality == SpiritualRootQuality.EXCELLENT) {
+                player.sendSystemMessage(Component.literal("§d恭喜！极品灵根，千年难遇！"));
+            }
+        }
+    }
+
+    private static String toColorCode(int rgb) {
+        String hex = String.format("%06X", rgb & 0xFFFFFF);
+        StringBuilder builder = new StringBuilder("§x");
+        for (char c : hex.toCharArray()) {
+            builder.append('§').append(Character.toLowerCase(c));
+        }
+        return builder.toString();
     }
 }

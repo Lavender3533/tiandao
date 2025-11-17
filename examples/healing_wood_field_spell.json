@@ -1,0 +1,89 @@
+{
+  "id": "tiandao:spells/healing_wood_field",
+  "metadata": {
+    "name": "木灵治疗领域",
+    "description": "以双手法印引导木灵之力，展开持续治疗的领域，为范围内友方单位恢复生命。",
+    "required_realm": "FOUNDATION",
+    "required_stage": 2,
+    "rarity": "UNCOMMON"
+  },
+  "source": {
+    "id": "seal",
+    "display_name": "法印",
+    "description": "双手结印，调动天地灵力，适合大术。"
+  },
+  "carrier": {
+    "id": "field",
+    "display_name": "领域",
+    "description": "以自身为中心展开领域，持续影响范围内单位。"
+  },
+  "form": {
+    "id": "duration",
+    "display_name": "持续通道",
+    "description": "持续一段时间，不断生效。"
+  },
+  "attributes": [
+    {
+      "id": "wood",
+      "display_name": "木",
+      "layer": "ELEMENT",
+      "magnitude": 1.3,
+      "scaling": {
+        "damage": 0.0,
+        "healing": 0.12
+      }
+    },
+    {
+      "id": "wood_spirit",
+      "display_name": "木灵",
+      "layer": "INTENT",
+      "magnitude": 1.4,
+      "scaling": {
+        "damage": 0.0,
+        "healing": 0.15
+      }
+    },
+    {
+      "id": "yin",
+      "display_name": "阴",
+      "layer": "YIN_YANG",
+      "magnitude": 1.0,
+      "scaling": {
+        "damage": 0.0,
+        "healing": 0.08
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "heal_up",
+      "display_name": "治疗强化",
+      "payload": {
+        "power": 1.8
+      }
+    },
+    {
+      "id": "shield",
+      "display_name": "护盾",
+      "payload": {
+        "power": 0.6
+      }
+    },
+    {
+      "id": "move_speed",
+      "display_name": "移速提升",
+      "payload": {
+        "power": 0.2
+      }
+    }
+  ],
+  "base_stats": {
+    "damage": 0.0,
+    "speed": 1.0,
+    "range": 8.0,
+    "channel_ticks": 0,
+    "duration_ticks": 300,
+    "cooldown": 20.0,
+    "spirit_cost": 60.0
+  }
+}

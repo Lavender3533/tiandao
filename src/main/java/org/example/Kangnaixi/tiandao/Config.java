@@ -7,8 +7,10 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.example.Kangnaixi.tiandao.spell.tag.SpellTags;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -36,6 +38,17 @@ public class Config
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_STRINGS = BUILDER
             .comment("A list of items to log on common setup.")
             .defineListAllowEmpty("items", List.of("minecraft:iron_ingot"), Config::validateItemName);
+
+    // === 术法系统配置 ===
+    private static final ForgeConfigSpec.BooleanValue ENABLE_LEGACY_NODE_SPELL = BUILDER
+            .comment("Enable legacy NodeSpell pipeline instead of the new cultivation spell editor (启用旧版节点术法系统)")
+            .define("spell.enableLegacyNodeSpell", false);
+
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXTRA_SWORD_TAGS = BUILDER
+            .comment("Additional item tags recognized as swords for sword-qi spells (额外的剑类Tag)")
+            .defineListAllowEmpty("spell.extraSwordTags",
+                    List.of("tiandao:weapon/swords", "minecraft:swords"),
+                    Config::validateResourceLocation);
 
     // === 环境灵力密度配置 ===
     
@@ -193,6 +206,8 @@ public class Config
     public static int magicNumber;
     public static String magicNumberIntroduction;
     public static Set<Item> items;
+    public static boolean enableLegacyNodeSpell;
+    public static Set<ResourceLocation> extraSwordTags = new LinkedHashSet<>();
     
     // 环境灵力密度配置公共字段
     public static double nightDensityMultiplier;
@@ -239,6 +254,11 @@ public class Config
         return obj instanceof final String itemName && ForgeRegistries.ITEMS.containsKey(ResourceLocation.tryParse(itemName));
     }
 
+    private static boolean validateResourceLocation(final Object obj)
+    {
+        return obj instanceof final String loc && ResourceLocation.tryParse(loc) != null;
+    }
+
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event)
     {
@@ -265,6 +285,12 @@ public class Config
             items = ITEM_STRINGS.get().stream()
                     .map(itemName -> ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(itemName)))
                     .collect(Collectors.toSet());
+            enableLegacyNodeSpell = ENABLE_LEGACY_NODE_SPELL.get();
+            extraSwordTags = EXTRA_SWORD_TAGS.get().stream()
+                    .map(ResourceLocation::tryParse)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            SpellTags.refreshCachedTags();
             
             // 加载环境灵力密度配置
             nightDensityMultiplier = NIGHT_DENSITY_MULTIPLIER.get();
@@ -311,6 +337,9 @@ public class Config
             magicNumber = 42;
             magicNumberIntroduction = "The magic number is... ";
             items = Collections.emptySet();
+            enableLegacyNodeSpell = false;
+            extraSwordTags = new LinkedHashSet<>();
+            SpellTags.refreshCachedTags();
             
             // 环境灵力密度默认值
             nightDensityMultiplier = 1.2;

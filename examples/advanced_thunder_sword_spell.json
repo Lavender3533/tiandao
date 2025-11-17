@@ -1,0 +1,93 @@
+{
+  "id": "tiandao:spells/advanced_thunder_sword",
+  "metadata": {
+    "name": "雷霆剑气斩",
+    "description": "以法剑为媒介，汇聚雷霆之力，发出带有麻痹效果的强力剑气。",
+    "required_realm": "CORE_FORMATION",
+    "required_stage": 3,
+    "rarity": "RARE"
+  },
+  "source": {
+    "id": "weapon",
+    "display_name": "法器（剑）",
+    "description": "借助飞剑 / 灵兵，将剑意外放为术。"
+  },
+  "carrier": {
+    "id": "sword_qi",
+    "display_name": "剑气",
+    "description": "向前发出斩击波，对路径上的敌人造成伤害。"
+  },
+  "form": {
+    "id": "channel",
+    "display_name": "引导",
+    "description": "按住引导，蓄力越久威力越强。"
+  },
+  "attributes": [
+    {
+      "id": "sword",
+      "display_name": "剑意",
+      "layer": "INTENT",
+      "magnitude": 1.5,
+      "scaling": {
+        "damage": 0.15
+      }
+    },
+    {
+      "id": "thunder",
+      "display_name": "雷意",
+      "layer": "INTENT",
+      "magnitude": 1.2,
+      "scaling": {
+        "damage": 0.08
+      }
+    },
+    {
+      "id": "yang",
+      "display_name": "阳",
+      "layer": "YIN_YANG",
+      "magnitude": 1.0,
+      "scaling": {
+        "damage": 0.05
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "armor_break",
+      "display_name": "破甲",
+      "payload": {
+        "power": 1.2
+      }
+    },
+    {
+      "id": "knockback",
+      "display_name": "击退",
+      "payload": {
+        "power": 1.5
+      }
+    },
+    {
+      "id": "dot",
+      "display_name": "持续伤害",
+      "payload": {
+        "power": 0.5
+      }
+    }
+  ],
+  "base_stats": {
+    "damage": 25.0,
+    "speed": 0.8,
+    "range": 15.0,
+    "channel_ticks": 30,
+    "duration_ticks": 0,
+    "cooldown": 8.0,
+    "spirit_cost": 45.0
+  },
+  "sword_qi_enhancement": {
+    "damage_multiplier": 1.4,
+    "speed_multiplier": 1.25,
+    "range_multiplier": 1.15,
+    "requires_sword": true,
+    "requires_sword_intent": true
+  }
+}

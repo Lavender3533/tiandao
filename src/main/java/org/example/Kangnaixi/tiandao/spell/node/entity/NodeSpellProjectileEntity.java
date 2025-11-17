@@ -1,4 +1,4 @@
-﻿package org.example.Kangnaixi.tiandao.spell.node.entity;
+package org.example.Kangnaixi.tiandao.spell.node.entity;
 
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;

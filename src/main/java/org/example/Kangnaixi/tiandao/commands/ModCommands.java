@@ -50,6 +50,9 @@ public class ModCommands {
         // 注册弹道测试命令 /projectiletest
         ProjectileTestCommand.register(event.getDispatcher());
 
+        // 修仙术法编辑器命令 /spell_editor
+        org.example.Kangnaixi.tiandao.command.SpellEditorCommand.register(event.getDispatcher());
+
         // 调试命令 /spelldebug
         SpellDebugCommand.register(event.getDispatcher());
 
@@ -64,3 +67,4 @@ public class ModCommands {
         Tiandao.LOGGER.info("- 弹道测试: /projectiletest");
     }
 }
+
