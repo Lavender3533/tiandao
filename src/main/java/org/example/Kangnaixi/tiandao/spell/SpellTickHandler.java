@@ -6,6 +6,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
+import org.example.Kangnaixi.tiandao.spell.runtime.engine.SpellRuntimeTicker;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -21,14 +22,15 @@ public class SpellTickHandler {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
-        event.getServer().getAllLevels().forEach(level ->
+        event.getServer().getAllLevels().forEach(level -> {
             level.players().forEach(serverPlayer ->
                 serverPlayer.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
                     processActiveSpells(serverPlayer, cultivation);
                     cleanupExpiredCooldowns(cultivation);
                 })
-            )
-        );
+            );
+            SpellRuntimeTicker.tick(level);
+        });
     }
 
     private static void processActiveSpells(ServerPlayer player, ICultivation cultivation) {

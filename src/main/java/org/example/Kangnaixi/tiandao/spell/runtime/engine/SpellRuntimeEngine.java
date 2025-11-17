@@ -19,13 +19,18 @@ public final class SpellRuntimeEngine {
         SpellContext ctx = new SpellContext(spell, player);
 
         SourceExecutors.get(spell.getSource()).beginCast(ctx);
-        CarrierExecutors.get(spell.getCarrier()).createCarrier(ctx);
-        FormExecutors.get(spell.getForm()).applyFormBehavior(ctx);
+        ctx.setCarrierExecutor(CarrierExecutors.get(spell.getCarrier()));
 
         spell.getAttributes().forEach(attr -> AttributeExecutors.get(attr).apply(ctx));
         spell.getEffects().forEach(effect -> EffectExecutors.get(effect).apply(ctx));
 
-        ctx.finalizeExecution();
+        FormExecutors.get(spell.getForm()).applyFormBehavior(ctx);
+
+        if (ctx.isFinished()) {
+            ctx.finalizeExecution();
+        } else {
+            SpellRuntimeTicker.add(ctx);
+        }
         return ctx;
     }
 }
