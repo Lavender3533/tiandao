@@ -4,12 +4,19 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.spell.runtime.AttributeType;
+import org.example.Kangnaixi.tiandao.spell.runtime.CarrierType;
+import org.example.Kangnaixi.tiandao.spell.runtime.EffectType;
+import org.example.Kangnaixi.tiandao.spell.runtime.FormType;
+import org.example.Kangnaixi.tiandao.spell.runtime.SourceType;
+import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 修仙术法编辑器 ViewModel
@@ -491,6 +498,100 @@ public class SpellEditorViewModel {
         }
 
         return root;
+    }
+
+    /**
+     * 将当前 GUI 配置转换为服务器可执行的 Spell 对象.
+     * 若缺少关键信息将抛出 IllegalStateException 以便界面提示玩家补全。
+     */
+    public Spell toRuntimeSpell() {
+        if (source == null || carrier == null || form == null) {
+            throw new IllegalStateException("请先选择施法源/载体/生效方式");
+        }
+        String normalizedId = normalizeSpellId(spellId);
+        SourceType sourceType = mapSource(source.id);
+        CarrierType carrierType = mapCarrier(carrier.id);
+        FormType formType = mapForm(form.id);
+
+        List<AttributeType> attrTypes = attributes.stream()
+            .map(attr -> mapAttribute(attr.id))
+            .collect(Collectors.toList());
+        List<EffectType> effectTypes = effects.stream()
+            .map(effect -> mapEffect(effect.id))
+            .collect(Collectors.toList());
+
+        return new Spell(
+            normalizedId,
+            displayName == null ? "" : displayName,
+            sourceType,
+            carrierType,
+            formType,
+            attrTypes,
+            effectTypes,
+            baseDamage,
+            spiritCost,
+            cooldown,
+            range
+        );
+    }
+
+    private static String normalizeSpellId(String rawId) {
+        String id = (rawId == null || rawId.isBlank()) ? Tiandao.MODID + ":custom_spell" : rawId.trim().toLowerCase(Locale.ROOT);
+        id = id.replace(' ', '_');
+        if (!id.contains(":")) {
+            id = Tiandao.MODID + ":" + id;
+        }
+        return id;
+    }
+
+    private static SourceType mapSource(String id) {
+        return switch (id) {
+            case "finger" -> SourceType.FINGER;
+            case "seal" -> SourceType.SEAL;
+            case "weapon" -> SourceType.WEAPON_SWORD;
+            case "talisman" -> SourceType.TALISMAN;
+            case "array" -> SourceType.ARRAY;
+            default -> SourceType.RUNE_CORE;
+        };
+    }
+
+    private static CarrierType mapCarrier(String id) {
+        return switch (id) {
+            case "sword_qi" -> CarrierType.SWORD_QI;
+            case "projectile" -> CarrierType.PROJECTILE;
+            case "field" -> CarrierType.FIELD;
+            case "glyph" -> CarrierType.GLYPH;
+            case "buff" -> CarrierType.BUFF;
+            case "cone" -> CarrierType.WAVE;
+            default -> CarrierType.PROJECTILE;
+        };
+    }
+
+    private static FormType mapForm(String id) {
+        return switch (id) {
+            case "instant" -> FormType.INSTANT;
+            case "channel" -> FormType.CHANNEL;
+            case "delay" -> FormType.DELAYED;
+            case "duration" -> FormType.DURATION;
+            case "combo" -> FormType.COMBO;
+            default -> FormType.INSTANT;
+        };
+    }
+
+    private static AttributeType mapAttribute(String id) {
+        try {
+            return AttributeType.valueOf(id.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("未知属性: " + id);
+        }
+    }
+
+    private static EffectType mapEffect(String id) {
+        try {
+            return EffectType.valueOf(id.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("未知效果: " + id);
+        }
     }
 
     private JsonObject componentToJson(SpellComponent component) {

@@ -8,7 +8,9 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
+import org.example.Kangnaixi.tiandao.network.packet.SpellEditorLearnPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorSavePacket;
+import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -444,6 +446,13 @@ public class SpellEditorScreen extends Screen {
         addRenderableWidget(exportBtn);
         finalTabWidgets.add(exportBtn);
 
+        Button saveBtn = Button.builder(
+            Component.literal("§b保存术法"),
+            b -> saveSpellToPlayer()
+        ).bounds(leftX + 160, this.height - 60, 150, BUTTON_HEIGHT).build();
+        addRenderableWidget(saveBtn);
+        finalTabWidgets.add(saveBtn);
+
         // 导航按钮
         addNavigationButtons(true, false);
     }
@@ -576,6 +585,19 @@ public class SpellEditorScreen extends Screen {
         if (minecraft != null && minecraft.player != null) {
             minecraft.player.sendSystemMessage(Component.literal("§a已提交保存请求"));
             minecraft.player.sendSystemMessage(Component.literal("§7JSON: " + json));
+        }
+    }
+
+    private void saveSpellToPlayer() {
+        if (this.minecraft == null || this.minecraft.player == null) {
+            return;
+        }
+        try {
+            Spell runtimeSpell = viewModel.toRuntimeSpell();
+            NetworkHandler.sendSpellEditorLearnToServer(new SpellEditorLearnPacket(runtimeSpell));
+            this.minecraft.player.sendSystemMessage(Component.literal("§e已提交术法学习请求"));
+        } catch (IllegalStateException ex) {
+            this.minecraft.player.sendSystemMessage(Component.literal("§c" + ex.getMessage()));
         }
     }
 

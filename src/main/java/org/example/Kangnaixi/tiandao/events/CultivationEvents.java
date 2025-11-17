@@ -22,6 +22,8 @@ import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.FoundationSystem;
 import org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
+import org.example.Kangnaixi.tiandao.spell.runtime.IPlayerSpells;
+import org.example.Kangnaixi.tiandao.spell.runtime.PlayerSpellsProvider;
 
 /**
  * 修仙系统事件处理器
@@ -39,11 +41,14 @@ public class CultivationEvents {
             CultivationProvider provider = new CultivationProvider();
             ResourceLocation id = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "cultivation");
             event.addCapability(id, provider);
-            // 不记录玩家名称，因为此时gameProfile可能为null
-            Tiandao.LOGGER.debug("为玩家附加修仙能力 Capability");
+            Tiandao.LOGGER.debug("为玩家附加修仙 Capability");
+
+            PlayerSpellsProvider spellsProvider = new PlayerSpellsProvider();
+            ResourceLocation spellId = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "player_spells");
+            event.addCapability(spellId, spellsProvider);
         }
     }
-    
+
     /**
      * 玩家克隆时复制修仙数据
      */
@@ -58,36 +63,35 @@ public class CultivationEvents {
         
         LazyOptional<ICultivation> originalCap = original.getCapability(Tiandao.CULTIVATION_CAPABILITY);
         LazyOptional<ICultivation> newCap = player.getCapability(Tiandao.CULTIVATION_CAPABILITY);
-        
+
         originalCap.ifPresent(originalCultivation -> {
             newCap.ifPresent(newCultivation -> {
-                // 使用copyFrom方法复制所有数据
                 newCultivation.copyFrom(originalCultivation);
-                
-                // 打印debug日志
-                if (originalCultivation instanceof CultivationCapability) {
-                    CultivationCapability origCap = (CultivationCapability) originalCultivation;
+
+                if (originalCultivation instanceof CultivationCapability origCap) {
                     SpiritualRoot root = origCap.getSpiritualRootObject();
-                    Tiandao.LOGGER.debug("玩家克隆 - 原始灵根: {} ({})", 
+                    Tiandao.LOGGER.debug("玩家克隆 - 原始灵根: {} ({})",
                         root != null ? root.getType().getDisplayName() : "null",
                         root != null && root.getQuality() != null ? root.getQuality().getDisplayName() : "null");
                 }
-                
-                if (newCultivation instanceof CultivationCapability) {
-                    CultivationCapability newCapImpl = (CultivationCapability) newCultivation;
+
+                if (newCultivation instanceof CultivationCapability newCapImpl) {
                     SpiritualRoot root = newCapImpl.getSpiritualRootObject();
-                    Tiandao.LOGGER.debug("玩家克隆 - 新灵根: {} ({})", 
+                    Tiandao.LOGGER.debug("玩家克隆 - 新灵根: {} ({})",
                         root != null ? root.getType().getDisplayName() : "null",
                         root != null && root.getQuality() != null ? root.getQuality().getDisplayName() : "null");
                 }
-                
-                // 同步到客户端
-                if (player instanceof ServerPlayer) {
-                    NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(newCultivation), (ServerPlayer) player);
+
+                if (player instanceof ServerPlayer serverPlayer) {
+                    NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(newCultivation), serverPlayer);
                     Tiandao.LOGGER.debug("玩家克隆时同步修仙数据到客户端");
                 }
             });
         });
+
+        LazyOptional<IPlayerSpells> originalSpells = original.getCapability(Tiandao.PLAYER_SPELLS_CAP);
+        LazyOptional<IPlayerSpells> newSpells = player.getCapability(Tiandao.PLAYER_SPELLS_CAP);
+        originalSpells.ifPresent(oldCap -> newSpells.ifPresent(copy -> copy.copyFrom(oldCap)));
         
         // 清理原始玩家的capability
         original.invalidateCaps();

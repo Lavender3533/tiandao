@@ -56,6 +56,8 @@ public class ModCommands {
         // 调试命令 /spelldebug
         SpellDebugCommand.register(event.getDispatcher());
 
+        SpellRuntimeCommand.register(event.getDispatcher());
+
         Tiandao.LOGGER.info("天道修仙系统命令已注册 v" + COMMAND_VERSION);
         Tiandao.LOGGER.info("- 主命令: /tiandao (别名: /cultivation)");
         Tiandao.LOGGER.info("- 测试命令: /tiandaotest");

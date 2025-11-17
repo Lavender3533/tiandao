@@ -61,6 +61,12 @@ public final class NetworkHandler {
             .consumerMainThread(SpellEditorSavePacket::handle)
             .add();
 
+        INSTANCE.messageBuilder(SpellEditorLearnPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+            .decoder(SpellEditorLearnPacket::new)
+            .encoder(SpellEditorLearnPacket::encode)
+            .consumerMainThread(SpellEditorLearnPacket::handle)
+            .add();
+
         INSTANCE.messageBuilder(SpellBlueprintCreatePacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
             .decoder(SpellBlueprintCreatePacket::new)
             .encoder(SpellBlueprintCreatePacket::encode)
@@ -105,6 +111,10 @@ public final class NetworkHandler {
     }
 
     public static void sendSpellEditorSaveToServer(SpellEditorSavePacket packet) {
+        INSTANCE.sendToServer(packet);
+    }
+
+    public static void sendSpellEditorLearnToServer(SpellEditorLearnPacket packet) {
         INSTANCE.sendToServer(packet);
     }
 
