@@ -206,5 +206,16 @@
   "gui.tiandao.spell.targeting.area_release": "Area",
   "gui.tiandao.spell.targeting.target_entity": "Target Entity",
   "gui.tiandao.spell.targeting.target_block": "Target Block",
-  "gui.tiandao.spell.editor.detail.targeting": "Targeting: %s"
+  "gui.tiandao.spell.editor.detail.targeting": "Targeting: %s",
+  "key.categories.tiandao.spell": "Spell Hotbar",
+  "key.tiandao.cast_spell": "Cast Spell",
+  "key.tiandao.hotbar_1": "Spell Hotbar 1",
+  "key.tiandao.hotbar_2": "Spell Hotbar 2",
+  "key.tiandao.hotbar_3": "Spell Hotbar 3",
+  "key.tiandao.hotbar_4": "Spell Hotbar 4",
+  "key.tiandao.hotbar_5": "Spell Hotbar 5",
+  "key.tiandao.hotbar_6": "Spell Hotbar 6",
+  "key.tiandao.hotbar_7": "Spell Hotbar 7",
+  "key.tiandao.hotbar_8": "Spell Hotbar 8",
+  "key.tiandao.hotbar_9": "Spell Hotbar 9"
 }

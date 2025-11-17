@@ -8,15 +8,8 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import org.example.Kangnaixi.tiandao.spell.runtime.AttributeType;
-import org.example.Kangnaixi.tiandao.spell.runtime.CarrierType;
-import org.example.Kangnaixi.tiandao.spell.runtime.EffectType;
-import org.example.Kangnaixi.tiandao.spell.runtime.FormType;
-import org.example.Kangnaixi.tiandao.spell.runtime.IPlayerSpells;
-import org.example.Kangnaixi.tiandao.spell.runtime.PlayerSpellsHelper;
-import org.example.Kangnaixi.tiandao.spell.runtime.SourceType;
-import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
-import org.example.Kangnaixi.tiandao.spell.runtime.SpellExecutor;
+import org.example.Kangnaixi.tiandao.spell.runtime.*;
+import org.example.Kangnaixi.tiandao.spell.runtime.engine.SpellRuntimeEngine;
 
 import java.util.List;
 import java.util.Optional;
@@ -96,7 +89,7 @@ public final class SpellRuntimeCommand {
             ctx.getSource().sendFailure(Component.literal("目标没有激活的术法。"));
             return 0;
         }
-        SpellExecutor.cast(target, active.get());
+        SpellRuntimeEngine.execute(target, active.get());
         ctx.getSource().sendSuccess(() -> Component.literal("已在 " + target.getScoreboardName() + " 身上释放术法 " + active.get().getName()), true);
         return 1;
     }

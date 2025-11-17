@@ -14,6 +14,7 @@ import org.example.Kangnaixi.tiandao.command.OpenNodeEditorCommand;
 import org.example.Kangnaixi.tiandao.command.NodeSpellDemoCommand;
 import org.example.Kangnaixi.tiandao.command.ProjectileTestCommand;
 import org.example.Kangnaixi.tiandao.command.SpellDebugCommand;
+import org.example.Kangnaixi.tiandao.command.SpellHotbarCommand;
 
 /**
  * 天道修仙系统命令注册类
@@ -57,6 +58,9 @@ public class ModCommands {
         SpellDebugCommand.register(event.getDispatcher());
 
         SpellRuntimeCommand.register(event.getDispatcher());
+
+        // 术法快捷栏命令 /spellruntime bind
+        SpellHotbarCommand.register(event.getDispatcher());
 
         Tiandao.LOGGER.info("天道修仙系统命令已注册 v" + COMMAND_VERSION);
         Tiandao.LOGGER.info("- 主命令: /tiandao (别名: /cultivation)");

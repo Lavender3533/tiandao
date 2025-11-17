@@ -33,31 +33,6 @@ public class KeyBindings {
         GLFW.GLFW_KEY_J,
         CATEGORY
     );
-    
-    // 术法快捷键（Shift + 数字键）
-    public static final KeyMapping CAST_SPELL_1 = new KeyMapping(
-        "key.tiandao.cast_spell_1", 
-        GLFW.GLFW_KEY_1, 
-        CATEGORY
-    );
-    
-    public static final KeyMapping CAST_SPELL_2 = new KeyMapping(
-        "key.tiandao.cast_spell_2", 
-        GLFW.GLFW_KEY_2, 
-        CATEGORY
-    );
-    
-    public static final KeyMapping CAST_SPELL_3 = new KeyMapping(
-        "key.tiandao.cast_spell_3", 
-        GLFW.GLFW_KEY_3, 
-        CATEGORY
-    );
-    
-    public static final KeyMapping CAST_SPELL_4 = new KeyMapping(
-        "key.tiandao.cast_spell_4", 
-        GLFW.GLFW_KEY_4, 
-        CATEGORY
-    );
 
     public static final KeyMapping OPEN_SPELL_EDITOR = new KeyMapping(
         "key.tiandao.open_spell_editor",
@@ -73,11 +48,7 @@ public class KeyBindings {
         event.register(CULTIVATION_STATUS);
         event.register(TOGGLE_HUD);
         event.register(TOGGLE_HUD_DETAILS);
-        event.register(CAST_SPELL_1);
-        event.register(CAST_SPELL_2);
-        event.register(CAST_SPELL_3);
-        event.register(CAST_SPELL_4);
         event.register(OPEN_SPELL_EDITOR);
-        Tiandao.LOGGER.info("修仙按键绑定已注册（包括术法快捷键）");
-            }
-        }
+        Tiandao.LOGGER.info("修仙按键绑定已注册");
+    }
+}

@@ -4,140 +4,155 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
-import org.example.Kangnaixi.tiandao.spell.runtime.engine.carrier.CarrierExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /**
- * 运行时上下文, Source/Carrier/Form/Attribute/Effect 共享的数据载体.
- * 支持 Tick 状态，以驱动延迟/引导/持续技能。
+ * 术法运行时上下文
+ * 包含施法者、世界、术法定义以及执行过程中的共享数据
  */
 public class SpellContext {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SpellContext.class);
-
-    private final Spell spell;
-    private final ServerPlayer caster;
+    // 基础信息
     private final ServerLevel level;
+    private final ServerPlayer caster;
+    private final Spell spell;
 
-    private Vec3 castPos;
-    private Vec3 direction;
-    private double baseDamage;
-    private double spiritCost;
-    private double cooldownSeconds;
-    private double projectileSpeed;
+    // 位置与方向
+    private final Vec3 origin;
+    private final Vec3 direction;
+
+    // 术法参数
+    private double damage;
     private double range;
+    private double speed;
+    private double radius;
 
-    private final Map<String, Object> data = new HashMap<>();
-    private CarrierExecutor carrierExecutor;
+    // 共享数据字典
+    private final Map<String, Object> data;
 
-    private int ticksExisted = 0;
-    private int maxDuration = 0;
-    private boolean channeling = false;
-    private boolean delayed = false;
-    private int delayTicks = 0;
-    private boolean durationSkill = false;
-    private boolean finished = false;
-
-    public SpellContext(Spell spell, ServerPlayer caster) {
-        this.spell = spell;
+    /**
+     * 创建术法上下文
+     */
+    public SpellContext(ServerLevel level, ServerPlayer caster, Spell spell) {
+        this.level = level;
         this.caster = caster;
-        this.level = caster.serverLevel();
+        this.spell = spell;
+        this.origin = caster.position().add(0, caster.getEyeHeight(), 0);
+        this.direction = caster.getLookAngle().normalize();
+        this.data = new HashMap<>();
 
-        this.castPos = caster.position();
-        this.direction = caster.getLookAngle();
-        this.baseDamage = spell.getBaseDamage();
-        this.spiritCost = spell.getBaseSpiritCost();
-        this.cooldownSeconds = spell.getBaseCooldown();
-        this.projectileSpeed = spell.getBaseRange();
+        // 初始化基础参数
+        this.damage = spell.getBaseDamage();
         this.range = spell.getBaseRange();
+        this.speed = 1.0; // 默认速度
+        this.radius = 1.0; // 默认半径
     }
 
-    public Spell spell() { return spell; }
-    public ServerPlayer caster() { return caster; }
-    public ServerLevel level() { return level; }
+    // ========== Getters ==========
 
-    public Vec3 castPos() { return castPos; }
-    public void setCastPos(Vec3 castPos) { this.castPos = castPos; }
+    public ServerLevel getLevel() {
+        return level;
+    }
 
-    public Vec3 direction() { return direction; }
-    public void setDirection(Vec3 direction) { this.direction = direction; }
+    public ServerPlayer getCaster() {
+        return caster;
+    }
 
-    public double baseDamage() { return baseDamage; }
-    public void setBaseDamage(double baseDamage) { this.baseDamage = baseDamage; }
+    public Spell getSpell() {
+        return spell;
+    }
 
-    public double spiritCost() { return spiritCost; }
-    public void setSpiritCost(double spiritCost) { this.spiritCost = spiritCost; }
+    public Vec3 getOrigin() {
+        return origin;
+    }
 
-    public double cooldownSeconds() { return cooldownSeconds; }
-    public void setCooldownSeconds(double cooldownSeconds) { this.cooldownSeconds = cooldownSeconds; }
+    public Vec3 getDirection() {
+        return direction;
+    }
 
-    public double projectileSpeed() { return projectileSpeed; }
-    public void setProjectileSpeed(double projectileSpeed) { this.projectileSpeed = projectileSpeed; }
+    public double getDamage() {
+        return damage;
+    }
 
-    public double range() { return range; }
-    public void setRange(double range) { this.range = range; }
+    public double getRange() {
+        return range;
+    }
 
-    public int ticksExisted() { return ticksExisted; }
-    public void incrementTicks() { this.ticksExisted++; }
-    public void resetTicks() { this.ticksExisted = 0; }
+    public double getSpeed() {
+        return speed;
+    }
 
-    public int maxDuration() { return maxDuration; }
-    public void setMaxDuration(int maxDuration) { this.maxDuration = maxDuration; }
+    public double getRadius() {
+        return radius;
+    }
 
-    public boolean channeling() { return channeling; }
-    public void setChanneling(boolean channeling) { this.channeling = channeling; }
+    // ========== Setters ==========
 
-    public boolean delayed() { return delayed; }
-    public void setDelayed(boolean delayed) { this.delayed = delayed; }
+    public void setDamage(double damage) {
+        this.damage = damage;
+    }
 
-    public int delayTicks() { return delayTicks; }
-    public void setDelayTicks(int delayTicks) { this.delayTicks = delayTicks; }
+    public void setRange(double range) {
+        this.range = range;
+    }
 
-    public boolean durationSkill() { return durationSkill; }
-    public void setDurationSkill(boolean durationSkill) { this.durationSkill = durationSkill; }
+    public void setSpeed(double speed) {
+        this.speed = speed;
+    }
 
-    public void put(String key, Object value) {
+    public void setRadius(double radius) {
+        this.radius = radius;
+    }
+
+    // ========== 数据字典操作 ==========
+
+    /**
+     * 存储数据到上下文
+     */
+    public void putData(String key, Object value) {
         data.put(key, value);
     }
 
-    public <T> Optional<T> get(String key, Class<T> type) {
-        Object value = data.get(key);
-        if (value == null) {
-            return Optional.empty();
-        }
-        return Optional.of(type.cast(value));
+    /**
+     * 获取数据（原始类型）
+     */
+    public Object getData(String key) {
+        return data.get(key);
     }
 
-    public boolean has(String key) {
+    /**
+     * 获取数据（带类型转换）
+     */
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> getData(String key, Class<T> type) {
+        Object value = data.get(key);
+        if (value != null && type.isInstance(value)) {
+            return Optional.of((T) value);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * 检查是否包含指定键
+     */
+    public boolean hasData(String key) {
         return data.containsKey(key);
     }
 
-    public void setCarrierExecutor(CarrierExecutor executor) {
-        this.carrierExecutor = executor;
+    /**
+     * 移除数据
+     */
+    public void removeData(String key) {
+        data.remove(key);
     }
 
-    public void spawnCarrier() {
-        if (carrierExecutor != null) {
-            carrierExecutor.createCarrier(this);
-        }
-    }
-
-    public void finish() {
-        this.finished = true;
-    }
-
-    public boolean isFinished() {
-        return finished;
-    }
-
-    public void finalizeExecution() {
-        LOGGER.debug("Spell [{}] cast by {} -> damage={}, speed={}, range={}, flags={}",
-            spell.getId(), caster.getGameProfile().getName(),
-            baseDamage, projectileSpeed, range, data.keySet());
+    /**
+     * 清空所有数据
+     */
+    public void clearData() {
+        data.clear();
     }
 }

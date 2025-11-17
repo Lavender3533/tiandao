@@ -57,64 +57,56 @@ public class SpellEditorViewModel {
     private double calculatedSwordSpeedMultiplier = 1.0;
     private double calculatedSwordRangeMultiplier = 1.0;
 
-    // 施法源选项 (对应HTML中的source选项)
+    // ① 起手式选项（对应 SourceExecutors）
     private static final List<SpellComponent> SOURCE_OPTIONS = List.of(
-        new SpellComponent("finger", "指诀", "单手结印，适合轻快小术，出手迅速。", "source"),
-        new SpellComponent("seal", "法印", "双手结印，调动天地灵力，适合大术。", "source"),
-        new SpellComponent("weapon", "法器（剑）", "借助飞剑 / 灵兵，将剑意外放为术。", "source"),
-        new SpellComponent("talisman", "符箓", "以灵符为媒介施术，附加效果丰富。", "source"),
-        new SpellComponent("array", "阵盘", "以阵盘催动阵法，布下术阵。", "source")
+        new SpellComponent("finger", "指诀", "从手前0.5m发出，快速灵活。", "source"),
+        new SpellComponent("seal", "法印", "从身体中心发出，稳定持久。", "source"),
+        new SpellComponent("weapon", "法器", "从武器端点发出，威力强大。", "source"),
+        new SpellComponent("talisman", "符箓", "在落点生成，范围控制。", "source"),
+        new SpellComponent("array", "阵盘", "从地面阵法触发，覆盖广阔。", "source")
     );
 
-    // 术法载体选项 (对应HTML中的carrier选项)
+    // ② 载体选项（对应 CarrierExecutors）
     private static final List<SpellComponent> CARRIER_OPTIONS = List.of(
-        new SpellComponent("sword_qi", "剑气", "向前发出斩击波，对路径上的敌人造成伤害。", "carrier"),
-        new SpellComponent("projectile", "灵光弹", "凝聚灵力为光弹，命中后爆散。", "carrier"),
-        new SpellComponent("cone", "波动冲击", "向前方形成锥形冲击波。", "carrier"),
-        new SpellComponent("field", "领域", "以自身为中心展开领域，持续影响范围内单位。", "carrier"),
-        new SpellComponent("glyph", "地面术阵", "在地面刻下术阵，触发时爆发力量。", "carrier"),
-        new SpellComponent("buff", "附体加持", "将术法加持于自身或队友身上。", "carrier")
+        new SpellComponent("sword_qi", "剑气", "线性斩击，快速贯穿。", "carrier"),
+        new SpellComponent("projectile", "弹丸", "飞行投射物，命中爆散。", "carrier"),
+        new SpellComponent("shockwave", "冲击波", "近战范围攻击，瞬间爆发。", "carrier"),
+        new SpellComponent("field", "领域", "持续范围Aura，覆盖区域。", "carrier"),
+        new SpellComponent("ground_spike", "地刺", "由地面冒起，突刺敌人。", "carrier"),
+        new SpellComponent("buff", "护体", "挂在玩家身上的Buff形态。", "carrier")
     );
 
-    // 生效方式选项 (对应HTML中的form选项)
+    // ③ 术式选项（对应 FormExecutors）
     private static final List<SpellComponent> FORM_OPTIONS = List.of(
-        new SpellComponent("instant", "瞬发", "无需蓄力，点击即发，适合小术与连招。", "form"),
-        new SpellComponent("channel", "引导", "按住引导，蓄力越久威力越强。", "form"),
-        new SpellComponent("delay", "延迟触发", "延迟一段时间后才会爆发，适合预判。", "form"),
-        new SpellComponent("duration", "持续通道", "持续一段时间，不断生效。", "form"),
-        new SpellComponent("combo", "连段", "多次按键触发不同段数，形成连招。", "form")
+        new SpellComponent("instant", "瞬发", "无需蓄力，点击即发。", "form"),
+        new SpellComponent("channel", "引导", "持续引导，蓄力增强。", "form"),
+        new SpellComponent("delay", "延迟触发", "延迟爆发，适合预判。", "form"),
+        new SpellComponent("duration", "持续通道", "持续一段时间生效。", "form"),
+        new SpellComponent("combo", "连段/多段", "多段连击，形成连招。", "form"),
+        new SpellComponent("mark_detonate", "标记引爆", "标记后手动引爆。", "form")
     );
 
-    // 属性选项 (对应HTML中的attr选项)
+    // ④ 属性选项（对应 AttributeExecutors - 只保留五行）
     private static final List<SpellAttribute> ATTRIBUTE_OPTIONS = List.of(
-        // 五行属性
-        new SpellAttribute("metal", "金", "金性之气，主锐利与穿透。", "element"),
-        new SpellAttribute("wood", "木", "木性之气，主生长与恢复。", "element"),
-        new SpellAttribute("water", "水", "水性之气，主流动与寒意。", "element"),
-        new SpellAttribute("fire", "火", "火性之气，主焚烧与爆裂。", "element"),
-        new SpellAttribute("earth", "土", "土性之气，主沉稳与防御。", "element"),
-        // 阴阳属性
-        new SpellAttribute("yang", "阳", "阳刚之力，爆发、攻击偏强。", "yin_yang"),
-        new SpellAttribute("yin", "阴", "阴柔之力，控制、削弱偏强。", "yin_yang"),
-        // 意境属性
-        new SpellAttribute("thunder", "雷意", "雷霆之意，迅疾而暴烈。", "intent"),
-        new SpellAttribute("sword", "剑意", "剑之本意，攻伐无双。", "intent"),
-        new SpellAttribute("wind", "风意", "疾风之意，轻灵迅捷。", "intent"),
-        new SpellAttribute("wood_spirit", "木灵", "木灵之性，善治愈与滋养。", "intent")
+        new SpellAttribute("fire", "火", "焚烧爆裂", "element"),
+        new SpellAttribute("water", "水", "流动寒冰", "element"),
+        new SpellAttribute("wood", "木", "生长恢复", "element"),
+        new SpellAttribute("metal", "金", "锐利穿透", "element"),
+        new SpellAttribute("earth", "土", "沉稳防御", "element")
     );
 
-    // 效果选项 (对应HTML中的effect选项)
+    // ⑤ 效果选项（对应 EffectExecutors）
     private static final List<SpellEffect> EFFECT_OPTIONS = List.of(
-        // 控制类/输出类
-        new SpellEffect("armor_break", "破甲", "降低敌人防御，适合配合高攻剑气。"),
-        new SpellEffect("knockback", "击退", "将敌人推开，保证安全距离。"),
-        new SpellEffect("aoe_up", "范围扩大", "小幅增加术法影响范围。"),
-        new SpellEffect("dot", "持续伤害", "在一段时间内持续造成伤害。"),
-        // 回复与辅助
-        new SpellEffect("heal_up", "治疗强化", "提升治疗术法的回复量。"),
-        new SpellEffect("shield", "护盾", "为目标提供额外护盾值。"),
-        new SpellEffect("move_speed", "移速提升", "一定时间内移动速度提高。"),
-        new SpellEffect("lifesteal", "吸血", "造成伤害的一部分会转化为自身生命。")
+        new SpellEffect("armor_break", "破甲", "降低防御"),
+        new SpellEffect("slow", "减速", "降低移速"),
+        new SpellEffect("dot", "点燃", "持续伤害"),
+        new SpellEffect("explode", "爆裂", "范围爆炸"),
+        new SpellEffect("penetrate", "穿透", "无视护甲"),
+        new SpellEffect("spread", "扩散", "范围扩散"),
+        new SpellEffect("lifesteal", "吸血", "吸取生命"),
+        new SpellEffect("track", "追踪", "自动追踪"),
+        new SpellEffect("shield", "护盾", "额外护盾"),
+        new SpellEffect("boomerang", "回旋", "飞回施法者")
     );
 
     // 基本设置方法
@@ -559,10 +551,13 @@ public class SpellEditorViewModel {
         return switch (id) {
             case "sword_qi" -> CarrierType.SWORD_QI;
             case "projectile" -> CarrierType.PROJECTILE;
+            case "shockwave" -> CarrierType.WAVE;      // 冲击波
             case "field" -> CarrierType.FIELD;
-            case "glyph" -> CarrierType.GLYPH;
+            case "ground_spike" -> CarrierType.GLYPH;  // 地刺
             case "buff" -> CarrierType.BUFF;
+            // 向后兼容旧选项
             case "cone" -> CarrierType.WAVE;
+            case "glyph" -> CarrierType.GLYPH;
             default -> CarrierType.PROJECTILE;
         };
     }
@@ -574,6 +569,7 @@ public class SpellEditorViewModel {
             case "delay" -> FormType.DELAYED;
             case "duration" -> FormType.DURATION;
             case "combo" -> FormType.COMBO;
+            case "mark_detonate" -> FormType.MARK_DETONATE;  // 标记引爆
             default -> FormType.INSTANT;
         };
     }

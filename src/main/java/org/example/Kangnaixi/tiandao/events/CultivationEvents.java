@@ -22,8 +22,11 @@ import org.example.Kangnaixi.tiandao.cultivation.SpiritualRoot;
 import org.example.Kangnaixi.tiandao.cultivation.FoundationSystem;
 import org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
+import org.example.Kangnaixi.tiandao.spell.runtime.hotbar.ISpellHotbar;
 import org.example.Kangnaixi.tiandao.spell.runtime.IPlayerSpells;
 import org.example.Kangnaixi.tiandao.spell.runtime.PlayerSpellsProvider;
+import org.example.Kangnaixi.tiandao.spell.runtime.hotbar.ISpellHotbar;
+import org.example.Kangnaixi.tiandao.spell.runtime.hotbar.SpellHotbarProvider;
 
 /**
  * 修仙系统事件处理器
@@ -46,6 +49,11 @@ public class CultivationEvents {
             PlayerSpellsProvider spellsProvider = new PlayerSpellsProvider();
             ResourceLocation spellId = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "player_spells");
             event.addCapability(spellId, spellsProvider);
+
+            SpellHotbarProvider hotbarProvider = new SpellHotbarProvider();
+            ResourceLocation hotbarId = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "spell_hotbar");
+            event.addCapability(hotbarId, hotbarProvider);
+            Tiandao.LOGGER.debug("为玩家附加术法快捷栏 Capability");
         }
     }
 
@@ -92,7 +100,11 @@ public class CultivationEvents {
         LazyOptional<IPlayerSpells> originalSpells = original.getCapability(Tiandao.PLAYER_SPELLS_CAP);
         LazyOptional<IPlayerSpells> newSpells = player.getCapability(Tiandao.PLAYER_SPELLS_CAP);
         originalSpells.ifPresent(oldCap -> newSpells.ifPresent(copy -> copy.copyFrom(oldCap)));
-        
+
+        LazyOptional<ISpellHotbar> originalHotbar = original.getCapability(Tiandao.SPELL_HOTBAR_CAP);
+        LazyOptional<ISpellHotbar> newHotbar = player.getCapability(Tiandao.SPELL_HOTBAR_CAP);
+        originalHotbar.ifPresent(oldCap -> newHotbar.ifPresent(copy -> copy.copyFrom(oldCap)));
+
         // 清理原始玩家的capability
         original.invalidateCaps();
     }
@@ -149,9 +161,12 @@ public class CultivationEvents {
                 ServerPlayer serverPlayer = (ServerPlayer) player;
                 NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), serverPlayer);
                 Tiandao.LOGGER.debug("玩家登录时立即同步修仙数据到客户端");
-                
+
                 // 延迟1秒后再次同步，确保客户端完全准备好
                 scheduleDelayedSync(serverPlayer, cultivation, 20); // 20 ticks = 1秒
+
+                player.getCapability(Tiandao.SPELL_HOTBAR_CAP).ifPresent(hotbar ->
+                    NetworkHandler.sendSpellHotbarSyncToPlayer(hotbar, serverPlayer));
             }
         });
     }

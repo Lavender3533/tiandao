@@ -128,20 +128,20 @@ public class SpellEditorScreen extends Screen {
         int midX = leftX + columnWidth + 20;
         int rightX = midX + columnWidth + 20;
 
-        // 左列：施法源
-        renderCoreColumn("§6§l施法源", leftX, contentY, columnWidth,
+        // 左列：起手式
+        renderCoreColumn("§6§l起手式", leftX, contentY, columnWidth,
             SpellEditorViewModel.getSourceOptions(),
             viewModel.getSource(),
             this::onSourceSelected);
 
         // 中列：载体
-        renderCoreColumn("§6§l术法载体", midX, contentY, columnWidth,
+        renderCoreColumn("§6§l载体", midX, contentY, columnWidth,
             SpellEditorViewModel.getCarrierOptions(),
             viewModel.getCarrier(),
             this::onCarrierSelected);
 
-        // 右列：生效方式
-        renderCoreColumn("§6§l生效方式", rightX, contentY, columnWidth,
+        // 右列：术式
+        renderCoreColumn("§6§l术式", rightX, contentY, columnWidth,
             SpellEditorViewModel.getFormOptions(),
             viewModel.getForm(),
             this::onFormSelected);
@@ -215,29 +215,15 @@ public class SpellEditorScreen extends Screen {
         int leftX = 20;
         int rightX = leftX + leftWidth + 20;
 
-        // 左侧：属性选择区
+        // 左侧：五行属性选择区
         int labelY = contentY;
         int buttonY = contentY + 20;
 
-        // 五行属性
-        List<SpellEditorViewModel.SpellAttribute> elementAttrs = SpellEditorViewModel.getAttributeOptions().stream()
-            .filter(a -> a.type.equals("element"))
-            .toList();
+        // 所有属性（现在只有五行）
+        List<SpellEditorViewModel.SpellAttribute> allAttrs = SpellEditorViewModel.getAttributeOptions();
 
-        for (SpellEditorViewModel.SpellAttribute attr : elementAttrs) {
-            renderAttributeButton(attr, leftX, buttonY, 80);
-            buttonY += BUTTON_HEIGHT + 5;
-        }
-
-        // 阴阳/意境属性
-        buttonY = contentY + 20;
-        int col2X = leftX + 100;
-        List<SpellEditorViewModel.SpellAttribute> otherAttrs = SpellEditorViewModel.getAttributeOptions().stream()
-            .filter(a -> !a.type.equals("element"))
-            .toList();
-
-        for (SpellEditorViewModel.SpellAttribute attr : otherAttrs) {
-            renderAttributeButton(attr, col2X, buttonY, 100);
+        for (SpellEditorViewModel.SpellAttribute attr : allAttrs) {
+            renderAttributeButton(attr, leftX, buttonY, 120);
             buttonY += BUTTON_HEIGHT + 5;
         }
 
@@ -638,22 +624,22 @@ public class SpellEditorScreen extends Screen {
         int rightX = midX + columnWidth + 20;
 
         // 列标题
-        guiGraphics.drawString(font, "§6§l施法源", leftX, contentY, 0xFFDD44);
-        guiGraphics.drawString(font, "§6§l术法载体", midX, contentY, 0xFFDD44);
-        guiGraphics.drawString(font, "§6§l生效方式", rightX, contentY, 0xFFDD44);
+        guiGraphics.drawString(font, "§6§l起手式", leftX, contentY, 0xFFDD44);
+        guiGraphics.drawString(font, "§6§l载体", midX, contentY, 0xFFDD44);
+        guiGraphics.drawString(font, "§6§l术式", rightX, contentY, 0xFFDD44);
 
         // 底部预览
         int previewY = this.height - 120;
-        guiGraphics.drawString(font, "§7§l当前骨架预览:", 20, previewY, 0xCCCCCC);
+        guiGraphics.drawString(font, "§7§l当前预览:", 20, previewY, 0xCCCCCC);
         previewY += 12;
 
         String sourceLabel = viewModel.getSource() != null ? viewModel.getSource().label : "未选择";
         String carrierLabel = viewModel.getCarrier() != null ? viewModel.getCarrier().label : "未选择";
         String formLabel = viewModel.getForm() != null ? viewModel.getForm().label : "未选择";
 
-        guiGraphics.drawString(font, "§e施法源: §7" + sourceLabel, 20, previewY, 0xFFFFFF);
+        guiGraphics.drawString(font, "§e起手式: §7" + sourceLabel, 20, previewY, 0xFFFFFF);
         guiGraphics.drawString(font, "§e载体: §7" + carrierLabel, 20, previewY + 11, 0xFFFFFF);
-        guiGraphics.drawString(font, "§e生效方式: §7" + formLabel, 20, previewY + 22, 0xFFFFFF);
+        guiGraphics.drawString(font, "§e术式: §7" + formLabel, 20, previewY + 22, 0xFFFFFF);
     }
 
     /**
@@ -666,7 +652,6 @@ public class SpellEditorScreen extends Screen {
 
         // 左侧标题
         guiGraphics.drawString(font, "§6§l五行属性", 20, contentY, 0xFFDD44);
-        guiGraphics.drawString(font, "§6§l阴阳/意境", 120, contentY, 0xFFDD44);
 
         // 右侧已选属性列表
         int listY = contentY;

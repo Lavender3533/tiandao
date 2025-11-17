@@ -6,7 +6,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.capability.ICultivation;
-import org.example.Kangnaixi.tiandao.spell.runtime.engine.SpellRuntimeTicker;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -29,7 +28,6 @@ public class SpellTickHandler {
                     cleanupExpiredCooldowns(cultivation);
                 })
             );
-            SpellRuntimeTicker.tick(level);
         });
     }
 

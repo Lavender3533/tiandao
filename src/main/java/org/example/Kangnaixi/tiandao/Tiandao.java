@@ -36,6 +36,7 @@ import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprintLibrary;
 import org.example.Kangnaixi.tiandao.spell.builder.SpellComponentLibrary;
 import org.example.Kangnaixi.tiandao.spell.entity.ModEntityTypes;
 import org.example.Kangnaixi.tiandao.spell.runtime.IPlayerSpells;
+import org.example.Kangnaixi.tiandao.spell.runtime.hotbar.ISpellHotbar;
 import org.example.Kangnaixi.tiandao.menu.ModMenuTypes;
 import org.example.Kangnaixi.tiandao.blockentity.CultivationAltarBlockEntity;
 import org.example.Kangnaixi.tiandao.client.event.ParticleEventHandler;
@@ -57,6 +58,7 @@ public class Tiandao {
     // 閼宠棄濮忓▔銊ュ斀
     public static final Capability<ICultivation> CULTIVATION_CAPABILITY = CapabilityManager.get(new CapabilityToken<ICultivation>() {});
     public static final Capability<IPlayerSpells> PLAYER_SPELLS_CAP = CapabilityManager.get(new CapabilityToken<IPlayerSpells>() {});
+    public static final Capability<ISpellHotbar> SPELL_HOTBAR_CAP = CapabilityManager.get(new CapabilityToken<ISpellHotbar>() {});
     // Create a Deferred Register to hold Blocks which will all be registered under the "tiandao" namespace
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
     // Create a Deferred Register to hold Items which will all be registered under the "tiandao" namespace
@@ -172,6 +174,7 @@ public class Tiandao {
     private void registerCapabilities(final RegisterCapabilitiesEvent event) {
         event.register(ICultivation.class);
         event.register(IPlayerSpells.class);
+        event.register(ISpellHotbar.class);
     }
 
     // Add the example block item to the building blocks tab
