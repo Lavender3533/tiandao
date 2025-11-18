@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
@@ -14,10 +15,11 @@ import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 修仙术法编辑器界面 - 分步式Tab设计
- * 基于HTML原型：4个分页（骨架 → 属性 → 效果 → 命名与预览）
+ * 基于HTML原型的四个分页（骨架、属性、效果、命名与预览）
  */
 public class SpellEditorScreen extends Screen {
 
@@ -46,6 +48,7 @@ public class SpellEditorScreen extends Screen {
 
     // 预览文本
     private String previewText = "";
+    private StringWidget spiritCostLabel;
 
     public SpellEditorScreen(SpellEditorViewModel viewModel) {
         super(Component.literal("修仙术法编辑器"));
@@ -58,6 +61,7 @@ public class SpellEditorScreen extends Screen {
         clearAllTabWidgets();
         initTabButtons();
         switchToTab(currentTab);
+        updateSpiritCostLabel();
     }
 
     /**
@@ -69,7 +73,7 @@ public class SpellEditorScreen extends Screen {
         int tabX = 20;
         int tabY = 10;
 
-        String[] tabLabels = {"① 骨架", "② 属性", "③ 效果", "④ 命名与预览"};
+        String[] tabLabels = {"①骨架", "②属性", "③效果", "④命名与预览"};
 
         for (int i = 0; i < tabCount; i++) {
             final int tabIndex = i;
@@ -108,7 +112,7 @@ public class SpellEditorScreen extends Screen {
     private void updateTabButtonStyles() {
         for (int i = 0; i < tabButtons.length; i++) {
             if (tabButtons[i] != null) {
-                String[] labels = {"① 骨架", "② 属性", "③ 效果", "④ 命名与预览"};
+                String[] labels = {"①骨架", "②属性", "③效果", "④命名与预览"};
                 String prefix = (i == currentTab) ? "§e§l" : "§7";
                 tabButtons[i].setMessage(Component.literal(prefix + labels[i]));
             }
@@ -164,7 +168,7 @@ public class SpellEditorScreen extends Screen {
 
         for (SpellEditorViewModel.SpellComponent option : options) {
             boolean isSelected = current != null && current.id.equals(option.id);
-            String prefix = isSelected ? "§a✔ " : "§7";
+            String prefix = isSelected ? "§a√" : "§7";
 
             Button btn = Button.builder(
                 Component.literal(prefix + option.label),
@@ -215,7 +219,7 @@ public class SpellEditorScreen extends Screen {
         int leftX = 20;
         int rightX = leftX + leftWidth + 20;
 
-        // 左侧：五行属性选择区
+        // 左侧：五行属性选择器
         int labelY = contentY;
         int buttonY = contentY + 20;
 
@@ -242,7 +246,7 @@ public class SpellEditorScreen extends Screen {
         boolean isSelected = current.stream().anyMatch(a -> a.id.equals(attr.id));
         boolean canAdd = current.size() < 3;
 
-        String prefix = isSelected ? "§a✔ " : (canAdd ? "§7" : "§8");
+        String prefix = isSelected ? "§a●" : (canAdd ? "§7" : "§8");
 
         Button btn = Button.builder(
             Component.literal(prefix + attr.label),
@@ -317,7 +321,7 @@ public class SpellEditorScreen extends Screen {
         boolean isSelected = current.stream().anyMatch(e -> e.id.equals(effect.id));
         boolean canAdd = current.size() < 4;
 
-        String prefix = isSelected ? "§b✔ " : (canAdd ? "§7" : "§8");
+        String prefix = isSelected ? "§b●" : (canAdd ? "§7" : "§8");
 
         Button btn = Button.builder(
             Component.literal(prefix + effect.label),
@@ -417,10 +421,11 @@ public class SpellEditorScreen extends Screen {
         addRenderableWidget(cooldownField);
         finalTabWidgets.add(cooldownField);
 
-        EditBox spiritField = createNumberField(leftX + statWidth * 4, statsY, statWidth - 5, viewModel::setSpiritCost, "灵力");
-        spiritField.setValue(String.format("%.1f", viewModel.getSpiritCost()));
-        addRenderableWidget(spiritField);
-        finalTabWidgets.add(spiritField);
+        spiritCostLabel = new StringWidget(leftX + statWidth * 4, statsY + 2, statWidth - 5, BUTTON_HEIGHT,
+            Component.literal("灵力消耗：--"), this.font);
+        addRenderableWidget(spiritCostLabel);
+        finalTabWidgets.add(spiritCostLabel);
+        updateSpiritCostLabel();
 
         // 完整预览区域（在render()中绘制）
 
@@ -447,8 +452,8 @@ public class SpellEditorScreen extends Screen {
      * 生成随机术法名称
      */
     private void generateRandomName() {
-        String[] prefixes = {"天", "地", "玄", "黄", "雷", "火", "冰", "风", "剑", "灵"};
-        String[] suffixes = {"斩", "击", "术", "诀", "法", "印", "破", "灭", "阵", "域"};
+        String[] prefixes = {"破", "灭", "焚", "冰", "雷", "风", "土", "金", "木", "水"};
+        String[] suffixes = {"术", "法", "诀", "咒", "印", "阵", "符", "劫", "炎", "寒"};
 
         String prefix = prefixes[(int) (Math.random() * prefixes.length)];
         String suffix = suffixes[(int) (Math.random() * suffixes.length)];
@@ -464,14 +469,14 @@ public class SpellEditorScreen extends Screen {
     // ==================== 通用辅助方法 ====================
 
     /**
-     * 添加上一步/下一步按钮
+     * 添加上一页/下一步按钮
      */
     private void addNavigationButtons(boolean showPrev, boolean showNext) {
         int bottomY = this.height - 35;
 
         if (showPrev) {
             Button prevBtn = Button.builder(
-                Component.literal("§7« 上一步"),
+                Component.literal("§7« 上一页"),
                 b -> switchToTab(currentTab - 1)
             ).bounds(20, bottomY, 100, BUTTON_HEIGHT).build();
             addRenderableWidget(prevBtn);
@@ -480,7 +485,7 @@ public class SpellEditorScreen extends Screen {
 
         if (showNext) {
             Button nextBtn = Button.builder(
-                Component.literal("§e下一步 »"),
+                Component.literal("§e下一页 »"),
                 b -> switchToTab(currentTab + 1)
             ).bounds(this.width - 120, bottomY, 100, BUTTON_HEIGHT).build();
             addRenderableWidget(nextBtn);
@@ -513,6 +518,7 @@ public class SpellEditorScreen extends Screen {
      * 清除所有内容区域的组件（保留Tab按钮）
      */
     private void clearContentWidgets() {
+        spiritCostLabel = null;
         // 移除所有Tab的组件（不仅仅是当前Tab）
         List<List<net.minecraft.client.gui.components.Renderable>> allTabWidgets = List.of(
             coreTabWidgets, attrTabWidgets, effectTabWidgets, finalTabWidgets
@@ -569,7 +575,7 @@ public class SpellEditorScreen extends Screen {
         NetworkHandler.sendSpellEditorSaveToServer(new SpellEditorSavePacket(viewModel.getSpellId(), json));
 
         if (minecraft != null && minecraft.player != null) {
-            minecraft.player.sendSystemMessage(Component.literal("§a已提交保存请求"));
+            minecraft.player.sendSystemMessage(Component.literal("§a已提交术法学习请求"));
             minecraft.player.sendSystemMessage(Component.literal("§7JSON: " + json));
         }
     }
@@ -579,8 +585,12 @@ public class SpellEditorScreen extends Screen {
             return;
         }
         try {
-            Spell runtimeSpell = viewModel.toRuntimeSpell();
-            NetworkHandler.sendSpellEditorLearnToServer(new SpellEditorLearnPacket(runtimeSpell));
+            // 生成 SpellDefinition 并序列化为 JSON
+            org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition definition = viewModel.toRuntimeDefinition();
+            String jsonString = definition.toJson().toString();
+
+            // 发送 SpellDefinition JSON 到服务器
+            NetworkHandler.sendSpellEditorLearnToServer(new SpellEditorLearnPacket(jsonString));
             this.minecraft.player.sendSystemMessage(Component.literal("§e已提交术法学习请求"));
         } catch (IllegalStateException ex) {
             this.minecraft.player.sendSystemMessage(Component.literal("§c" + ex.getMessage()));
@@ -592,6 +602,16 @@ public class SpellEditorScreen extends Screen {
      */
     private void updatePreview() {
         previewText = viewModel.getPreviewText();
+        updateSpiritCostLabel();
+    }
+
+    private void updateSpiritCostLabel() {
+        if (this.spiritCostLabel != null) {
+            double cost = viewModel.getComputedSpiritCost();
+            this.spiritCostLabel.setMessage(Component.literal(
+                String.format(Locale.ROOT, "灵力消耗：%.1f", cost)
+            ));
+        }
     }
 
     // ==================== 渲染方法 ====================
@@ -655,7 +675,7 @@ public class SpellEditorScreen extends Screen {
 
         // 右侧已选属性列表
         int listY = contentY;
-        guiGraphics.drawString(font, "§7§l已选属性 (最多3个):", rightX, listY, 0xCCCCCC);
+        guiGraphics.drawString(font, "§7§l已选属性(最多3):", rightX, listY, 0xCCCCCC);
         listY += 15;
 
         List<SpellEditorViewModel.SpellAttribute> attrs = viewModel.getAttributes();
@@ -663,7 +683,7 @@ public class SpellEditorScreen extends Screen {
             guiGraphics.drawString(font, "§8暂无", rightX, listY, 0x888888);
         } else {
             for (SpellEditorViewModel.SpellAttribute attr : attrs) {
-                guiGraphics.drawString(font, "§e• " + attr.label + " §7(" + attr.type + ")", rightX, listY, 0xFFDD44);
+                guiGraphics.drawString(font, "§e● " + attr.label + " §7(" + attr.type + ")", rightX, listY, 0xFFDD44);
                 listY += 11;
             }
         }
@@ -671,7 +691,7 @@ public class SpellEditorScreen extends Screen {
         // 底部预览
         int previewY = this.height - 100;
         guiGraphics.drawString(font, "§7§l预览:", 20, previewY, 0xCCCCCC);
-        String[] lines = previewText.split("。");
+        String[] lines = previewText.split("\n");
         for (int i = 0; i < Math.min(lines.length, 3); i++) {
             if (!lines[i].trim().isEmpty()) {
                 guiGraphics.drawString(font, "§7" + lines[i].trim(), 20, previewY + 12 + i * 11, 0xAAAAAA);
@@ -692,7 +712,7 @@ public class SpellEditorScreen extends Screen {
 
         // 右侧已选效果列表
         int listY = contentY;
-        guiGraphics.drawString(font, "§7§l已选效果 (最多4个):", rightX, listY, 0xCCCCCC);
+        guiGraphics.drawString(font, "§7§l已选效果(最多4):", rightX, listY, 0xCCCCCC);
         listY += 15;
 
         List<SpellEditorViewModel.SpellEffect> effects = viewModel.getEffects();
@@ -700,7 +720,7 @@ public class SpellEditorScreen extends Screen {
             guiGraphics.drawString(font, "§8暂无", rightX, listY, 0x888888);
         } else {
             for (SpellEditorViewModel.SpellEffect effect : effects) {
-                guiGraphics.drawString(font, "§b• " + effect.label, rightX, listY, 0x55FFFF);
+                guiGraphics.drawString(font, "§b● " + effect.label, rightX, listY, 0x55FFFF);
                 listY += 11;
             }
         }
@@ -708,7 +728,7 @@ public class SpellEditorScreen extends Screen {
         // 底部预览
         int previewY = this.height - 100;
         guiGraphics.drawString(font, "§7§l预览:", 20, previewY, 0xCCCCCC);
-        String[] lines = previewText.split("。");
+        String[] lines = previewText.split("\n");
         for (int i = 0; i < Math.min(lines.length, 3); i++) {
             if (!lines[i].trim().isEmpty()) {
                 guiGraphics.drawString(font, "§7" + lines[i].trim(), 20, previewY + 12 + i * 11, 0xAAAAAA);
@@ -736,7 +756,6 @@ public class SpellEditorScreen extends Screen {
         guiGraphics.drawString(font, "§7速度:", 20 + statWidth, statsY - 10, 0xCCCCCC);
         guiGraphics.drawString(font, "§7范围:", 20 + statWidth * 2, statsY - 10, 0xCCCCCC);
         guiGraphics.drawString(font, "§7冷却:", 20 + statWidth * 3, statsY - 10, 0xCCCCCC);
-        guiGraphics.drawString(font, "§7灵力:", 20 + statWidth * 4, statsY - 10, 0xCCCCCC);
 
         // 完整预览
         int previewY = statsY + 40;
@@ -765,7 +784,7 @@ public class SpellEditorScreen extends Screen {
         // 剑修强化提示
         if (viewModel.isSwordQiEnhanced()) {
             previewY += 5;
-            String enhanceText = String.format("§e§l⚔ 剑修强化激活！ §7持剑时：伤害×%.1f 速度×%.1f 范围×%.1f",
+            String enhanceText = String.format("§e§l【剑修强化激活！】 §7持剑时：伤害×%.1f 速度×%.1f 范围×%.1f",
                 viewModel.getCalculatedSwordDamageMultiplier(),
                 viewModel.getCalculatedSwordSpeedMultiplier(),
                 viewModel.getCalculatedSwordRangeMultiplier());
@@ -774,7 +793,7 @@ public class SpellEditorScreen extends Screen {
 
         // 描述预览
         previewY += 15;
-        String[] lines = previewText.split("。");
+        String[] lines = previewText.split("\n");
         for (int i = 0; i < Math.min(lines.length, 2); i++) {
             if (!lines[i].trim().isEmpty()) {
                 guiGraphics.drawString(font, "§7" + lines[i].trim(), 20, previewY + i * 11, 0xAAAAAA);
@@ -787,3 +806,4 @@ public class SpellEditorScreen extends Screen {
         return false;
     }
 }
+

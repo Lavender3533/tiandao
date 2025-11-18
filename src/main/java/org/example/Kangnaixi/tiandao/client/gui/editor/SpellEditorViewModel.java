@@ -4,18 +4,24 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition;
 import org.example.Kangnaixi.tiandao.spell.runtime.AttributeType;
 import org.example.Kangnaixi.tiandao.spell.runtime.CarrierType;
 import org.example.Kangnaixi.tiandao.spell.runtime.EffectType;
 import org.example.Kangnaixi.tiandao.spell.runtime.FormType;
 import org.example.Kangnaixi.tiandao.spell.runtime.SourceType;
 import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
+import org.example.Kangnaixi.tiandao.spell.runtime.calc.SpellSpiritCostCalculator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -39,7 +45,6 @@ public class SpellEditorViewModel {
     private double speed = 1.0;
     private double range = 10;
     private double cooldown = 6;
-    private double spiritCost = 25;
 
     // 时间相关
     private int channelTicks = 0;
@@ -265,10 +270,6 @@ public class SpellEditorViewModel {
         this.cooldown = Math.max(0, cooldown);
     }
 
-    public void setSpiritCost(double spiritCost) {
-        this.spiritCost = Math.max(0, spiritCost);
-    }
-
     public void setChannelTicks(int channelTicks) {
         this.channelTicks = Math.max(0, channelTicks);
     }
@@ -304,10 +305,6 @@ public class SpellEditorViewModel {
 
     public double getCooldown() {
         return cooldown;
-    }
-
-    public double getSpiritCost() {
-        return spiritCost;
     }
 
     public int getChannelTicks() {
@@ -356,7 +353,6 @@ public class SpellEditorViewModel {
         speed = 1.0;
         range = 10;
         cooldown = 6;
-        spiritCost = 25;
         channelTicks = 0;
         durationTicks = 0;
         attributes.clear();
@@ -475,7 +471,6 @@ public class SpellEditorViewModel {
         stats.addProperty("channel_ticks", channelTicks);
         stats.addProperty("duration_ticks", durationTicks);
         stats.addProperty("cooldown", cooldown);
-        stats.addProperty("spirit_cost", spiritCost);
         root.add("base_stats", stats);
 
         // 剑修强化 (如果有)
@@ -490,6 +485,99 @@ public class SpellEditorViewModel {
         }
 
         return root;
+    }
+
+    public double getComputedSpiritCost() {
+        try {
+            SpellDefinition definition = toRuntimeDefinition();
+            return SpellSpiritCostCalculator.compute(definition);
+        } catch (Exception ex) {
+            return 10.0;
+        }
+    }
+
+    public SpellDefinition toRuntimeDefinition() {
+        ResourceLocation id = ResourceLocation.tryParse(normalizeSpellId(spellId));
+        if (id == null) {
+            id = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "spell/generated");
+        }
+
+        SpellDefinition.Component sourceComp = toDefinitionComponent(source, "source");
+        SpellDefinition.Component carrierComp = toDefinitionComponent(carrier, "carrier");
+        SpellDefinition.Component formComp = toDefinitionComponent(form, "form");
+
+        List<SpellDefinition.Attribute> attrs = new ArrayList<>();
+        for (SpellAttribute attr : attributes) {
+            SpellDefinition.Attribute definitionAttr = toDefinitionAttribute(attr);
+            if (definitionAttr != null) {
+                attrs.add(definitionAttr);
+            }
+        }
+
+        List<SpellDefinition.Effect> effectDefs = new ArrayList<>();
+        for (SpellEffect effect : effects) {
+            SpellDefinition.Effect def = toDefinitionEffect(effect);
+            if (def != null) {
+                effectDefs.add(def);
+            }
+        }
+
+        SpellDefinition.Numbers numbers = new SpellDefinition.Numbers(
+            baseDamage,
+            speed,
+            range,
+            channelTicks,
+            durationTicks,
+            cooldown,
+            0
+        );
+
+        SpellDefinition.Metadata metadata = new SpellDefinition.Metadata(
+            displayName == null ? "" : displayName,
+            description == null ? "" : description,
+            null,
+            0,
+            "COMMON",
+            List.of()
+        );
+
+        return new SpellDefinition(id, sourceComp, carrierComp, formComp, attrs, effectDefs, numbers, metadata, null);
+    }
+
+    private SpellDefinition.Component toDefinitionComponent(SpellComponent component, String category) {
+        // 使用真实的 resource ID (例如 tiandao:source/finger)，而不是临时的 editor/ 前缀
+        ResourceLocation compId = component != null
+            ? ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, category + "/" + component.id)
+            : ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, category + "/missing");
+        String name = component != null ? component.label : "未选择";
+        String desc = component != null ? component.description : "";
+        Map<String, Double> params = new LinkedHashMap<>();
+        return new SpellDefinition.Component(compId, name, desc, params, Collections.emptySet());
+    }
+
+    private SpellDefinition.Attribute toDefinitionAttribute(SpellAttribute attribute) {
+        if (attribute == null) {
+            return null;
+        }
+        // 使用真实的 attribute resource ID (例如 tiandao:attr/fire)
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "attr/" + attribute.id);
+        SpellDefinition.AttributeLayer layer = switch (attribute.type.toLowerCase(Locale.ROOT)) {
+            case "element" -> SpellDefinition.AttributeLayer.ELEMENT;
+            case "yin_yang" -> SpellDefinition.AttributeLayer.YIN_YANG;
+            case "intent" -> SpellDefinition.AttributeLayer.INTENT;
+            default -> SpellDefinition.AttributeLayer.CUSTOM;
+        };
+        return new SpellDefinition.Attribute(id, attribute.label, layer, 1.0,
+            Collections.emptyMap(), Collections.emptySet());
+    }
+
+    private SpellDefinition.Effect toDefinitionEffect(SpellEffect effect) {
+        if (effect == null) {
+            return null;
+        }
+        // 使用真实的 effect resource ID (例如 tiandao:effect/explode)
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "effect/" + effect.id);
+        return new SpellDefinition.Effect(id, effect.label, Collections.emptyMap(), Collections.emptySet());
     }
 
     /**
@@ -521,7 +609,7 @@ public class SpellEditorViewModel {
             attrTypes,
             effectTypes,
             baseDamage,
-            spiritCost,
+            getComputedSpiritCost(),
             cooldown,
             range
         );

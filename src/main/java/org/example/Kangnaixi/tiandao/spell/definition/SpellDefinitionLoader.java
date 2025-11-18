@@ -100,7 +100,7 @@ public class SpellDefinitionLoader {
         return definitions;
     }
 
-    private Optional<SpellDefinition> parseDefinition(JsonObject obj, String source) {
+    public Optional<SpellDefinition> parseDefinition(JsonObject obj, String source) {
         try {
             ResourceLocation id = parseId(obj.get("id"), "spell id");
             SpellDefinition.Component sourceComp = parseComponent(obj.getAsJsonObject("source"));

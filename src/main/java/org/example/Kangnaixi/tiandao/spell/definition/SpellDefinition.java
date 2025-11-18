@@ -1,5 +1,7 @@
 package org.example.Kangnaixi.tiandao.spell.definition;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 import org.example.Kangnaixi.tiandao.cultivation.CultivationRealm;
 
@@ -90,6 +92,161 @@ public final class SpellDefinition {
             }
         }
         return false;
+    }
+
+    /**
+     * 将 SpellDefinition 序列化为 JSON 对象
+     */
+    public JsonObject toJson() {
+        JsonObject root = new JsonObject();
+        root.addProperty("id", id.toString());
+
+        // 骨架组件
+        root.add("source", componentToJson(source));
+        root.add("carrier", componentToJson(carrier));
+        root.add("form", componentToJson(form));
+
+        // 属性
+        JsonArray attrsArray = new JsonArray();
+        for (Attribute attr : attributes) {
+            attrsArray.add(attributeToJson(attr));
+        }
+        root.add("attributes", attrsArray);
+
+        // 效果
+        JsonArray effectsArray = new JsonArray();
+        for (Effect effect : effects) {
+            effectsArray.add(effectToJson(effect));
+        }
+        root.add("effects", effectsArray);
+
+        // 基础属性
+        root.add("base_stats", numbersToJson(baseStats));
+
+        // 元数据
+        root.add("metadata", metadataToJson(metadata));
+
+        // 剑修强化
+        if (swordQiOverride != null) {
+            root.add("sword_qi", swordQiOverrideToJson(swordQiOverride));
+        }
+
+        return root;
+    }
+
+    private JsonObject componentToJson(Component component) {
+        JsonObject json = new JsonObject();
+        json.addProperty("id", component.id().toString());
+        json.addProperty("display_name", component.displayName());
+        json.addProperty("description", component.description());
+
+        if (!component.numericParameters().isEmpty()) {
+            JsonObject params = new JsonObject();
+            component.numericParameters().forEach(params::addProperty);
+            json.add("parameters", params);
+        }
+
+        if (!component.tags().isEmpty()) {
+            JsonArray tags = new JsonArray();
+            component.tags().forEach(tags::add);
+            json.add("tags", tags);
+        }
+
+        return json;
+    }
+
+    private JsonObject attributeToJson(Attribute attribute) {
+        JsonObject json = new JsonObject();
+        json.addProperty("id", attribute.id().toString());
+        json.addProperty("display_name", attribute.displayName());
+        json.addProperty("layer", attribute.layer().name());
+        json.addProperty("magnitude", attribute.magnitude());
+
+        if (!attribute.scaling().isEmpty()) {
+            JsonObject scaling = new JsonObject();
+            attribute.scaling().forEach(scaling::addProperty);
+            json.add("scaling", scaling);
+        }
+
+        if (!attribute.tags().isEmpty()) {
+            JsonArray tags = new JsonArray();
+            attribute.tags().forEach(tags::add);
+            json.add("tags", tags);
+        }
+
+        return json;
+    }
+
+    private JsonObject effectToJson(Effect effect) {
+        JsonObject json = new JsonObject();
+        json.addProperty("id", effect.id().toString());
+        json.addProperty("display_name", effect.displayName());
+
+        if (!effect.payload().isEmpty()) {
+            JsonObject payload = new JsonObject();
+            effect.payload().forEach(payload::addProperty);
+            json.add("payload", payload);
+        }
+
+        if (!effect.tags().isEmpty()) {
+            JsonArray tags = new JsonArray();
+            effect.tags().forEach(tags::add);
+            json.add("tags", tags);
+        }
+
+        return json;
+    }
+
+    private JsonObject numbersToJson(Numbers numbers) {
+        JsonObject json = new JsonObject();
+        json.addProperty("damage", numbers.baseDamage());
+        json.addProperty("speed", numbers.projectileSpeed());
+        json.addProperty("range", numbers.areaRange());
+        json.addProperty("channel_ticks", numbers.channelTicks());
+        json.addProperty("duration_ticks", numbers.durationTicks());
+        json.addProperty("cooldown", numbers.cooldownSeconds());
+        json.addProperty("spirit_cost", numbers.spiritCost());
+        return json;
+    }
+
+    private JsonObject metadataToJson(Metadata metadata) {
+        JsonObject json = new JsonObject();
+        json.addProperty("name", metadata.displayName());
+        json.addProperty("description", metadata.description());
+        if (metadata.requiredRealm() != null) {
+            json.addProperty("required_realm", metadata.requiredRealm().name());
+        }
+        json.addProperty("required_stage", metadata.requiredStage());
+        json.addProperty("rarity", metadata.rarity());
+
+        if (!metadata.unlockTags().isEmpty()) {
+            JsonArray tags = new JsonArray();
+            metadata.unlockTags().forEach(tags::add);
+            json.add("unlock_tags", tags);
+        }
+
+        return json;
+    }
+
+    private JsonObject swordQiOverrideToJson(SwordQiOverride override) {
+        JsonObject json = new JsonObject();
+        json.addProperty("damage_multiplier", override.damageMultiplier());
+        json.addProperty("speed_multiplier", override.speedMultiplier());
+        json.addProperty("range_multiplier", override.rangeMultiplier());
+
+        if (override.requiredAttributeTag().isPresent()) {
+            json.addProperty("required_attribute_tag", override.requiredAttributeTag().get());
+        }
+
+        if (!override.extraEffects().isEmpty()) {
+            JsonArray effects = new JsonArray();
+            for (Effect effect : override.extraEffects()) {
+                effects.add(effectToJson(effect));
+            }
+            json.add("extra_effects", effects);
+        }
+
+        return json;
     }
 
     public record Component(ResourceLocation id,
