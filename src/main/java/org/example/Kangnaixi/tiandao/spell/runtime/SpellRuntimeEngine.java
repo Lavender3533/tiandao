@@ -30,10 +30,6 @@ public final class SpellRuntimeEngine {
             if (rangeBonus != 0) {
                 runtimeNumbers.scaleRange(1.0 + rangeBonus);
             }
-            double costBonus = attribute.scalingOrDefault("spirit_cost", 0);
-            if (costBonus != 0) {
-                runtimeNumbers.scaleSpiritCost(1.0 + costBonus);
-            }
         }
 
         List<SpellDefinition.Effect> finalEffects = new ArrayList<>(definition.getEffects());

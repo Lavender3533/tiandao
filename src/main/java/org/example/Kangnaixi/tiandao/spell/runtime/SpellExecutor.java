@@ -7,25 +7,55 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.projectile.SmallFireball;
 import net.minecraft.world.phys.Vec3;
+import org.example.Kangnaixi.tiandao.capability.ICultivation;
 
 /**
- * 极简的施法执行器，根据载体/属性进行分支，方便未来挂接 GUI。
+ * 旧版 Spell 对象的执行器，负责根据载体/效果生成对应实体，同时统一本地灵力扣除。
  */
 public final class SpellExecutor {
 
+    private static final double MIN_COST = 5.0;
+    private static final double MAX_COST = 320.0;
+
     private SpellExecutor() {}
 
-    public static void cast(ServerPlayer player, Spell spell) {
+    public static CastResult cast(ServerPlayer player, ICultivation cultivation, Spell spell) {
         if (spell == null) {
-            return;
+            return CastResult.failure(CastResult.FailureReason.UNKNOWN, 0, cultivation.getSpiritPower());
         }
+        double spiritCost = estimateSpiritCost(spell);
+        if (cultivation.getSpiritPower() < spiritCost || !cultivation.consumeSpiritPower(spiritCost)) {
+            return CastResult.failure(CastResult.FailureReason.SPIRIT, spiritCost, cultivation.getSpiritPower());
+        }
+
         switch (spell.getCarrier()) {
             case SWORD_QI -> fireSwordQi(player, spell);
             case PROJECTILE -> fireProjectile(player, spell);
             case FIELD -> spawnField(player, spell);
             case BUFF -> applyBuff(player, spell);
-            default -> fireProjectile(player, spell); // fallback
+            default -> fireProjectile(player, spell);
         }
+        return CastResult.success(spiritCost);
+    }
+
+    public static double estimateSpiritCost(Spell spell) {
+        double cost = Math.max(MIN_COST, spell.getBaseSpiritCost());
+        cost += spell.getAttributes().size() * 3.5;
+        cost += spell.getEffects().size() * 4.0;
+        switch (spell.getCarrier()) {
+            case FIELD -> cost += 12.0;
+            case BUFF -> cost += 8.0;
+            case SWORD_QI -> cost += 6.0;
+            default -> cost += 4.0;
+        }
+        switch (spell.getForm()) {
+            case CHANNEL -> cost *= 1.2;
+            case DURATION -> cost *= 1.15;
+            case COMBO, MARK_DETONATE -> cost *= 1.1;
+            default -> {
+            }
+        }
+        return Math.min(MAX_COST, cost);
     }
 
     private static void fireSwordQi(ServerPlayer player, Spell spell) {
@@ -71,6 +101,25 @@ public final class SpellExecutor {
         }
         if (spell.getEffects().contains(EffectType.MOVE_SPEED)) {
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 0));
+        }
+    }
+
+    public record CastResult(boolean success,
+                             double spiritCost,
+                             double currentSpirit,
+                             FailureReason failureReason) {
+
+        public static CastResult success(double spiritCost) {
+            return new CastResult(true, spiritCost, 0, null);
+        }
+
+        public static CastResult failure(FailureReason reason, double expected, double current) {
+            return new CastResult(false, expected, current, reason);
+        }
+
+        public enum FailureReason {
+            SPIRIT,
+            UNKNOWN
         }
     }
 }

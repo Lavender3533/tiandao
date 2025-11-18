@@ -6,11 +6,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.cultivation.ExperienceConversionSystem;
+import org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.spell.SpellRegistry;
 import org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition;
-import org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService;
 import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
+import org.example.Kangnaixi.tiandao.spell.runtime.SpellCastingService;
 import org.example.Kangnaixi.tiandao.spell.runtime.SpellExecutor;
 
 import java.util.function.Supplier;
@@ -68,6 +69,7 @@ public class SpellCastPacket {
                             "§a成功施放术法 §e" + definition.getMetadata().displayName()
                                 + " §7(消耗 " + String.format("%.1f", cost) + " 灵力)"
                         ));
+                        NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), player);
                     } else {
                         handleFailure(player, definition, castResult);
                     }
@@ -78,8 +80,24 @@ public class SpellCastPacket {
 
                 if (runtimeSpell != null) {
                     try {
-                        SpellExecutor.cast(player, runtimeSpell);
-                        player.sendSystemMessage(Component.literal("§a施放术法: §e" + runtimeSpell.getName()));
+                        SpellExecutor.CastResult legacyResult = SpellExecutor.cast(player, cultivation, runtimeSpell);
+                        if (legacyResult.success()) {
+                            double cost = legacyResult.spiritCost();
+                            ExperienceConversionSystem.onSpiritConsumed(player, cost);
+                            player.sendSystemMessage(Component.literal(
+                                "§a施放术法: §e" + runtimeSpell.getName()
+                                    + " §7(消耗 " + String.format("%.1f", cost) + " 灵力)"
+                            ));
+                            NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), player);
+                            NetworkHandler.sendSpellDataToPlayer(new SpellDataSyncPacket(cultivation), player);
+                        } else if (legacyResult.failureReason() == SpellExecutor.CastResult.FailureReason.SPIRIT) {
+                            player.sendSystemMessage(Component.literal(
+                                "§c灵力不足！需要 " + String.format("%.1f", legacyResult.spiritCost())
+                                    + " 当前 " + String.format("%.1f", legacyResult.currentSpirit())
+                            ));
+                        } else {
+                            player.sendSystemMessage(Component.literal("§c术法施放失败"));
+                        }
                     } catch (Exception ex) {
                         player.sendSystemMessage(Component.literal("§c术法施放失败: " + ex.getMessage()));
                         Tiandao.LOGGER.error("Runtime spell cast failed", ex);

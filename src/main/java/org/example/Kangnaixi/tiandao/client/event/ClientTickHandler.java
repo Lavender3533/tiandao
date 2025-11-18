@@ -10,7 +10,8 @@ import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.KeyBindings;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationHUD;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationStatusScreen;
-import org.example.Kangnaixi.tiandao.client.gui.ArsNouveauStyleSpellEditorScreen;
+import org.example.Kangnaixi.tiandao.client.gui.editor.SpellEditorScreen;
+import org.example.Kangnaixi.tiandao.client.gui.editor.SpellEditorViewModel;
 import org.example.Kangnaixi.tiandao.config.CultivationConfig;
 
 /**
@@ -58,7 +59,9 @@ public class ClientTickHandler {
 
         while (KeyBindings.OPEN_SPELL_EDITOR.consumeClick()) {
             if (minecraft.player != null && minecraft.screen == null) {
-                minecraft.setScreen(new ArsNouveauStyleSpellEditorScreen());
+                SpellEditorViewModel model = new SpellEditorViewModel();
+                model.setSpellId("tiandao:custom_spell");
+                minecraft.setScreen(new SpellEditorScreen(model));
             }
         }
     }
