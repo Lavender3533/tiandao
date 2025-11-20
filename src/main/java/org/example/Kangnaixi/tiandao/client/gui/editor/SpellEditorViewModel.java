@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -30,8 +32,11 @@ import java.util.stream.Collectors;
  */
 public class SpellEditorViewModel {
 
+    // ID 验证正则：允许 namespace:path/to/spell，path只能包含小写字母、数字、下划线、斜杠
+    private static final Pattern VALID_ID_PATTERN = Pattern.compile("^[a-z0-9_]+:[a-z0-9_/]+$");
+
     // 基本信息
-    private String spellId = Tiandao.MODID + ":custom_spell";
+    private String spellId = null; // 默认为null，保存时如果未设置则自动生成
     private String displayName = "未命名术法";
     private String description = "请在此填写术法描述。";
 
@@ -114,15 +119,126 @@ public class SpellEditorViewModel {
         new SpellEffect("boomerang", "回旋", "飞回施法者")
     );
 
-    // 基本设置方法
+    // ==================== ID 生成与验证 ====================
 
-    public void setSpellId(String id) {
-        if (!id.isBlank()) {
-            this.spellId = id.toLowerCase(Locale.ROOT);
+    /**
+     * 生成基于UUID的唯一术法ID
+     * 格式: tiandao:custom/spell_<uuid前8位>
+     */
+    public static String generateUniqueId() {
+        String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        return Tiandao.MODID + ":custom/spell_" + uuid;
+    }
+
+    /**
+     * 生成基于玩家名和时间戳的术法ID
+     * 格式: tiandao:custom/<player_name>_<timestamp>
+     */
+    public static String generatePlayerBasedId(String playerName) {
+        String sanitizedName = playerName.toLowerCase(Locale.ROOT)
+            .replaceAll("[^a-z0-9_]", "_");
+        long timestamp = System.currentTimeMillis() / 1000; // 秒级时间戳
+        return Tiandao.MODID + ":custom/" + sanitizedName + "_" + timestamp;
+    }
+
+    /**
+     * 验证术法ID是否合法
+     * @param id 术法ID
+     * @return ValidationResult 包含是否合法和错误信息
+     */
+    public static ValidationResult validateSpellId(String id) {
+        if (id == null || id.isBlank()) {
+            return ValidationResult.invalid("术法ID不能为空");
+        }
+
+        String trimmed = id.trim().toLowerCase(Locale.ROOT);
+
+        // 检查格式
+        if (!VALID_ID_PATTERN.matcher(trimmed).matches()) {
+            return ValidationResult.invalid("ID格式不正确。正确格式: namespace:path (只能包含小写字母、数字、下划线、斜杠)");
+        }
+
+        // 检查长度
+        if (trimmed.length() > 128) {
+            return ValidationResult.invalid("ID长度不能超过128字符");
+        }
+
+        // 检查namespace
+        String[] parts = trimmed.split(":", 2);
+        if (parts.length != 2) {
+            return ValidationResult.invalid("ID必须包含namespace和path，格式: namespace:path");
+        }
+
+        String namespace = parts[0];
+        String path = parts[1];
+
+        if (namespace.isEmpty() || path.isEmpty()) {
+            return ValidationResult.invalid("namespace和path不能为空");
+        }
+
+        return ValidationResult.valid(trimmed);
+    }
+
+    /**
+     * ID验证结果
+     */
+    public static class ValidationResult {
+        private final boolean valid;
+        private final String normalizedId; // 标准化后的ID（小写、去空格）
+        private final String errorMessage;
+
+        private ValidationResult(boolean valid, String normalizedId, String errorMessage) {
+            this.valid = valid;
+            this.normalizedId = normalizedId;
+            this.errorMessage = errorMessage;
+        }
+
+        public static ValidationResult valid(String normalizedId) {
+            return new ValidationResult(true, normalizedId, null);
+        }
+
+        public static ValidationResult invalid(String errorMessage) {
+            return new ValidationResult(false, null, errorMessage);
+        }
+
+        public boolean isValid() {
+            return valid;
+        }
+
+        public String getNormalizedId() {
+            return normalizedId;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
         }
     }
 
+    // ==================== 基本设置方法 ====================
+
+    public void setSpellId(String id) {
+        ValidationResult result = validateSpellId(id);
+        if (result.isValid()) {
+            this.spellId = result.getNormalizedId();
+        } else {
+            throw new IllegalArgumentException(result.getErrorMessage());
+        }
+    }
+
+    /**
+     * 获取术法ID，如果未设置则自动生成唯一ID
+     */
     public String getSpellId() {
+        if (spellId == null || spellId.isBlank()) {
+            spellId = generateUniqueId();
+        }
+        return spellId;
+    }
+
+    /**
+     * 获取原始ID（可能为null）
+     */
+    public String getSpellIdRaw() {
         return spellId;
     }
 
@@ -343,7 +459,7 @@ public class SpellEditorViewModel {
      * 重置所有状态
      */
     public void reset() {
-        spellId = Tiandao.MODID + ":custom_spell";
+        spellId = null; // 重置为null，下次保存时自动生成新ID
         displayName = "未命名术法";
         description = "请在此填写术法描述。";
         source = null;

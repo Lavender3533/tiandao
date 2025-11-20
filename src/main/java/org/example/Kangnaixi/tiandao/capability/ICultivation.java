@@ -431,4 +431,44 @@ public interface ICultivation {
      * 查询是否已掌握指定蓝图
      */
     boolean knowsBlueprint(String blueprintId);
+
+    // ==================== 引导施法状态管理 ====================
+
+    /**
+     * 获取当前引导施法状态
+     * @return 当前引导状态，如果没有正在引导的术法则返回 null
+     */
+    @javax.annotation.Nullable
+    org.example.Kangnaixi.tiandao.spell.ChannelingSpellState getChannelingState();
+
+    /**
+     * 开始引导施法
+     * @param spellId 术法 ID
+     * @param formType 术法类型（CHANNEL 或 DURATION）
+     * @param totalTicks 总引导时间（ticks）
+     * @param spiritCostPerTick 每 tick 灵力消耗
+     * @param startPosition 起始位置（仅 CHANNEL 类型需要，用于移动打断检测）
+     */
+    void startChanneling(String spellId,
+                        org.example.Kangnaixi.tiandao.spell.runtime.FormType formType,
+                        int totalTicks,
+                        double spiritCostPerTick,
+                        @javax.annotation.Nullable net.minecraft.world.phys.Vec3 startPosition);
+
+    /**
+     * 结束引导施法（完成或打断）
+     */
+    void stopChanneling();
+
+    /**
+     * 检查是否正在引导施法
+     * @return true 如果有正在进行的引导施法
+     */
+    boolean isChanneling();
+
+    /**
+     * 推进引导进度（每 tick 调用）
+     * @return true 如果引导仍在继续，false 如果引导已完成
+     */
+    boolean tickChanneling();
 }

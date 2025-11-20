@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorLearnPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorSavePacket;
@@ -359,14 +360,42 @@ public class SpellEditorScreen extends Screen {
         int fieldWidth = (this.width - 60) / 2 - 10;
 
         // ID输入
-        idField = new EditBox(this.font, leftX, contentY, fieldWidth, BUTTON_HEIGHT, Component.literal("术法ID"));
-        idField.setValue(viewModel.getSpellId());
+        idField = new EditBox(this.font, leftX, contentY, fieldWidth - 60, BUTTON_HEIGHT, Component.literal("术法ID"));
+        // 显示当前ID或提示文本
+        String currentId = viewModel.getSpellIdRaw();
+        idField.setValue(currentId != null ? currentId : "§7[自动生成]");
         idField.setResponder(value -> {
-            viewModel.setSpellId(value);
-            updatePreview();
+            // 移除提示文本
+            if (value.equals("§7[自动生成]") || value.isBlank()) {
+                return;
+            }
+            try {
+                viewModel.setSpellId(value);
+                updatePreview();
+            } catch (IllegalArgumentException ex) {
+                // ID验证失败，显示错误提示（在保存时会再次验证）
+                Tiandao.LOGGER.warn("ID验证失败: {}", ex.getMessage());
+            }
         });
         addRenderableWidget(idField);
         finalTabWidgets.add(idField);
+
+        // 生成新ID按钮
+        Button generateIdBtn = Button.builder(
+            Component.literal("§a生成"),
+            b -> {
+                String newId = SpellEditorViewModel.generateUniqueId();
+                idField.setValue(newId);
+                try {
+                    viewModel.setSpellId(newId);
+                    updatePreview();
+                } catch (IllegalArgumentException ex) {
+                    Tiandao.LOGGER.error("生成的ID无效（不应发生）: {}", ex.getMessage());
+                }
+            }
+        ).bounds(leftX + fieldWidth - 55, contentY, 50, BUTTON_HEIGHT).build();
+        addRenderableWidget(generateIdBtn);
+        finalTabWidgets.add(generateIdBtn);
 
         // 名称输入
         nameField = new EditBox(this.font, leftX + fieldWidth + 20, contentY, fieldWidth, BUTTON_HEIGHT, Component.literal("术法名称"));
@@ -585,14 +614,37 @@ public class SpellEditorScreen extends Screen {
             return;
         }
         try {
+            // 确保有有效的术法ID
+            String spellId = viewModel.getSpellId(); // 如果为null会自动生成
+
+            // 验证ID合法性
+            SpellEditorViewModel.ValidationResult validationResult =
+                SpellEditorViewModel.validateSpellId(spellId);
+
+            if (!validationResult.isValid()) {
+                this.minecraft.player.sendSystemMessage(
+                    Component.literal("§c术法ID不合法: " + validationResult.getErrorMessage())
+                );
+                return;
+            }
+
+            // 更新ID字段显示（如果是自动生成的）
+            if (idField != null && !spellId.equals(idField.getValue())) {
+                idField.setValue(spellId);
+            }
+
             // 生成 SpellDefinition 并序列化为 JSON
             org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition definition = viewModel.toRuntimeDefinition();
             String jsonString = definition.toJson().toString();
 
             // 发送 SpellDefinition JSON 到服务器
             NetworkHandler.sendSpellEditorLearnToServer(new SpellEditorLearnPacket(jsonString));
-            this.minecraft.player.sendSystemMessage(Component.literal("§e已提交术法学习请求"));
+            this.minecraft.player.sendSystemMessage(
+                Component.literal("§e已提交术法学习请求 §7(ID: " + spellId + ")")
+            );
         } catch (IllegalStateException ex) {
+            this.minecraft.player.sendSystemMessage(Component.literal("§c" + ex.getMessage()));
+        } catch (IllegalArgumentException ex) {
             this.minecraft.player.sendSystemMessage(Component.literal("§c" + ex.getMessage()));
         }
     }

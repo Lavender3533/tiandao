@@ -30,6 +30,9 @@ public class ModCommands {
         TiandaoCommand.register(event.getDispatcher());
         SpellBlueprintCommand.register(event.getDispatcher());
 
+        // 注册 /spell 快捷命令（/tiandao spell 的简化版本）
+        SpellCommand.register(event.getDispatcher());
+
         // 注册测试命令 /tiandaotest
         TiandaoTestCommand.register(event.getDispatcher());
 
@@ -64,6 +67,8 @@ public class ModCommands {
 
         Tiandao.LOGGER.info("天道修仙系统命令已注册 v" + COMMAND_VERSION);
         Tiandao.LOGGER.info("- 主命令: /tiandao (别名: /cultivation)");
+        Tiandao.LOGGER.info("- 术法快捷命令: /spell (list/cast/info)");
+        Tiandao.LOGGER.info("- 术法快捷栏: /spellruntime (bind/clear/list)");
         Tiandao.LOGGER.info("- 测试命令: /tiandaotest");
         Tiandao.LOGGER.info("- 符文测试命令: /testrune");
         Tiandao.LOGGER.info("- 符文编辑器: /runeeditor");

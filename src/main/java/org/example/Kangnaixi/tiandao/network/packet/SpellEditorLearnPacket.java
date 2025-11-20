@@ -56,24 +56,30 @@ public class SpellEditorLearnPacket {
                 SpellDefinition definition = definitionOpt.get();
                 String spellId = definition.getId().toString();
 
-                // 保存到配置目录
-                try {
-                    SpellDefinitionExporter.saveToConfig(spellId, json);
-                } catch (Exception e) {
-                    Tiandao.LOGGER.warn("保存术法定义到配置文件失败: {}", e.getMessage());
-                }
+                // 使用统一的 SpellRegistry.saveAndRegister() 接口
+                SpellRegistry.RegisterResult result = SpellRegistry.getInstance()
+                    .saveAndRegister(definition, SpellRegistry.SpellSource.PLAYER_CREATED);
 
-                // 注册到 SpellRegistry
-                SpellRegistry.getInstance().registerSpell(definition);
+                if (!result.isSuccess()) {
+                    Tiandao.LOGGER.error("术法保存失败: {}", result.getErrorMessage());
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "§c术法保存失败: " + result.getErrorMessage()
+                    ));
+                    return;
+                }
 
                 // 添加到玩家的 Cultivation capability
                 player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
                     if (!cultivation.hasSpell(spellId)) {
                         cultivation.unlockSpell(spellId);
+                        Tiandao.LOGGER.info("玩家 {} 学会术法: {} ({})",
+                            player.getScoreboardName(), definition.getMetadata().displayName(), spellId);
                         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                             "§a成功创建并学习术法: §e" + definition.getMetadata().displayName()
                         ));
                     } else {
+                        Tiandao.LOGGER.info("玩家 {} 更新术法: {} ({})",
+                            player.getScoreboardName(), definition.getMetadata().displayName(), spellId);
                         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                             "§a术法已更新: §e" + definition.getMetadata().displayName()
                         ));

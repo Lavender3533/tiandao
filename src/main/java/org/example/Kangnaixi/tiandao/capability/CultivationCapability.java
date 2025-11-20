@@ -45,7 +45,11 @@ public class CultivationCapability implements ICultivation {
     private java.util.Map<String, Long> spellCooldowns = new java.util.HashMap<>(); // 术法冷却时间 <术法ID, 冷却结束时间戳>
     private java.util.Map<String, Long> activeSpells = new java.util.HashMap<>(); // 激活的持续性术法 <术法ID, 效果结束时间戳>
     private final java.util.List<SpellBlueprint> knownBlueprints = new java.util.ArrayList<>(); // 已掌握的术法蓝图
-    
+
+    // 引导施法状态
+    @javax.annotation.Nullable
+    private org.example.Kangnaixi.tiandao.spell.ChannelingSpellState channelingState = null;
+
     @Override
     public SpiritualRootType getSpiritualRoot() {
         return spiritualRoot.getType();
@@ -724,5 +728,49 @@ public class CultivationCapability implements ICultivation {
             }
         }
         return false;
+    }
+
+    // ==================== 引导施法状态管理实现 ====================
+
+    @Override
+    @javax.annotation.Nullable
+    public org.example.Kangnaixi.tiandao.spell.ChannelingSpellState getChannelingState() {
+        return channelingState;
+    }
+
+    @Override
+    public void startChanneling(String spellId,
+                               org.example.Kangnaixi.tiandao.spell.runtime.FormType formType,
+                               int totalTicks,
+                               double spiritCostPerTick,
+                               @javax.annotation.Nullable net.minecraft.world.phys.Vec3 startPosition) {
+        this.channelingState = new org.example.Kangnaixi.tiandao.spell.ChannelingSpellState(
+            spellId, formType, totalTicks, spiritCostPerTick, startPosition
+        );
+    }
+
+    @Override
+    public void stopChanneling() {
+        this.channelingState = null;
+    }
+
+    @Override
+    public boolean isChanneling() {
+        return channelingState != null && channelingState.isActive();
+    }
+
+    @Override
+    public boolean tickChanneling() {
+        if (channelingState == null) {
+            return false;
+        }
+
+        channelingState.tick();
+
+        if (!channelingState.isActive()) {
+            return false; // 引导完成
+        }
+
+        return true; // 继续引导
     }
 }
