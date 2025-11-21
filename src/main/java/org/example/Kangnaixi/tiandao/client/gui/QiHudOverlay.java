@@ -29,10 +29,15 @@ public final class QiHudOverlay {
         mc.player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
             double current = cultivation.getSpiritPower();
             double max = Math.max(1.0, cultivation.getMaxSpiritPower());
-            // 如果这是第一帧，就先记下来，不做比较
-            if (lastSpiritPower < 0) {
-                lastSpiritPower = current;
+            if (current <= 20){
+                String.format("灵力低于20");
             }
+            // 如果这是第一帧，就先记下来，不做比较
+//            if (lastSpiritPower < 0) {
+//                lastSpiritPower = current;
+//            }
+            boolean low = current < 0.2; //20%
+
             // 如果当前灵力比上一帧多，说明刚回蓝，记录一下时间
             if (current > lastSpiritPower) {
                 lastFlashTime = System.currentTimeMillis();
@@ -45,8 +50,8 @@ public final class QiHudOverlay {
             int endColor   = 0xFFFF5555;  // 空蓝
             int filled = (int) (ratio * barWidth);
             int color = lerpColor(startColor, endColor, 1.0 - Math.min(1.0, ratio));
-
-
+            int color2 = low ?  0xFFFF5555 : lerpColor(startColor, endColor, ratio);
+            String text2 = String.format("%.0f / %.0f", current, max);
 
 
             GuiGraphics g = event.getGuiGraphics();
@@ -63,6 +68,8 @@ public final class QiHudOverlay {
             g.fill(x, y, x + barWidth, y + barHeight, 0xAA1E1E1E);
             
             g.fill(x, y, x + filled, y + barHeight, color);
+
+            g.drawString(mc.font, text2 + (low ? " ⚠ 灵力低于20%" : ""), x +10, y - 5, 0xFFFFFFFF);
 
             long elapsed = System.currentTimeMillis() - lastFlashTime;
             if (elapsed < 300) { // 300ms 内显示流光

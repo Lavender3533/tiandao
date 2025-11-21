@@ -30,9 +30,14 @@ public class SpellEditorColors {
     public static final int BUTTON_DISABLED = 0xFF808080;   // 禁用按钮
 
     // 卡片色
-    public static final int CARD_BG = 0xFFF5E6DC;           // 卡片背景
-    public static final int CARD_BG_HOVER = 0xFFFFE4B5;     // 卡片悬停背景
-    public static final int CARD_BG_SELECTED = 0xFFFFEFD5;  // 卡片选中背景
+    public static final int CARD_BG = 0xFFF5E6DC;           // 卡片背景（米色）
+    public static final int CARD_BG_HOVER = 0xFFF5E6DC;     // 卡片悬停背景（保持米色）
+    public static final int CARD_BG_SELECTED = 0xFFE6D4C4;  // 卡片选中背景（浅棕色）
+
+    // 卡片边框色
+    public static final int CARD_BORDER_NORMAL = 0xFF8B4513;    // 默认深褐色边框
+    public static final int CARD_BORDER_HOVER = 0xFFDC143C;     // Hover朱砂色边框
+    public static final int CARD_BORDER_SELECTED = 0xFFFFD700;  // 选中金色边框
 
     // 进度条色
     public static final int PROGRESS_FILL = 0xFFFFD700;     // 进度条填充（金色）

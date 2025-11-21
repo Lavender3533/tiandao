@@ -9,9 +9,8 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.example.Kangnaixi.tiandao.Tiandao;
-import org.example.Kangnaixi.tiandao.client.gui.editor.widget.ComponentCard;
+import org.example.Kangnaixi.tiandao.client.gui.editor.widget.DaoCardWidget;
 import org.example.Kangnaixi.tiandao.client.gui.editor.widget.SpellPreviewPanel;
-import org.example.Kangnaixi.tiandao.client.gui.editor.widget.StepNavigationBar;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorLearnPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorSavePacket;
@@ -28,38 +27,42 @@ import java.util.Locale;
 public class SpellEditorScreen extends Screen {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final int PADDING = 10;
-    private static final int BUTTON_HEIGHT = 20;
-    private static final int TAB_HEIGHT = 30;
+    private static final int TOP_BAR_HEIGHT = 40;
+    private static final int BOTTOM_BAR_HEIGHT = 30;
+    private static final float LEFT_PANEL_WIDTH_RATIO = 0.3f;
 
     private final SpellEditorViewModel viewModel;
 
-    // 当前激活的Tab (0=骨架, 1=属性, 2=效果, 3=命名与预览)
-    private int currentTab = 0;
-
-    // Tab按钮
-    private Button[] tabButtons = new Button[4];
-
-    // 各Tab的组件容器
-    private List<net.minecraft.client.gui.components.Renderable> coreTabWidgets = new ArrayList<>();
-    private List<net.minecraft.client.gui.components.Renderable> attrTabWidgets = new ArrayList<>();
-    private List<net.minecraft.client.gui.components.Renderable> effectTabWidgets = new ArrayList<>();
-    private List<net.minecraft.client.gui.components.Renderable> finalTabWidgets = new ArrayList<>();
-
-    // 新版Widget组件（用于骨架Tab）
-    private StepNavigationBar stepNavigationBar;
-    private SpellPreviewPanel previewPanel;
-    private List<ComponentCard> sourceCards = new ArrayList<>();
-    private List<ComponentCard> carrierCards = new ArrayList<>();
-    private List<ComponentCard> formCards = new ArrayList<>();
-
-    // 命名Tab输入框
+    // 顶部栏组件
     private EditBox nameField;
     private EditBox idField;
+    private Button generateIdButton;
+
+    // 左侧预览面板
+    private SpellPreviewPanel previewPanel;
+
+    // 右侧所有卡片
+    private List<DaoCardWidget> allCards = new ArrayList<>();
+
+    // 区域标题
+    private static class SectionTitle {
+        String title;
+        int x, y;
+        SectionTitle(String title, int x, int y) {
+            this.title = title;
+            this.x = x;
+            this.y = y;
+        }
+    }
+    private List<SectionTitle> sectionTitles = new ArrayList<>();
+
+    // 滚动相关
+    private int scrollOffset = 0;
+    private int maxScrollOffset = 0;
+    private int rightPanelContentHeight = 0;
 
     // 预览文本
     private String previewText = "";
-    private StringWidget spiritCostLabel;
 
     public SpellEditorScreen(SpellEditorViewModel viewModel) {
         super(Component.literal("修仙术法编辑器"));
@@ -69,197 +72,351 @@ public class SpellEditorScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        clearAllTabWidgets();
-        initTabButtons();
-        switchToTab(currentTab);
-        updateSpiritCostLabel();
+        allCards.clear();
+        sectionTitles.clear();
+        scrollOffset = 0;
+
+        // 初始化顶部栏
+        initTopBar();
+
+        // 初始化左侧预览面板
+        initLeftPanel();
+
+        // 初始化右侧组件卡片
+        initRightPanel();
+
+        // 初始化底部按钮
+        initBottomBar();
     }
 
-    /**
-     * 初始化顶部Tab切换按钮
-     */
-    private void initTabButtons() {
-        int tabCount = 4;
-        int tabWidth = (this.width - 40) / tabCount;
-        int tabX = 20;
-        int tabY = 10;
+    private void initTopBar() {
+        int topY = 5;
 
-        String[] tabLabels = {"①骨架", "②属性", "③效果", "④命名与预览"};
+        // 术法名输入（中间）
+        int nameWidth = 200;
+        int nameX = this.width / 2 - nameWidth / 2;
+        nameField = new EditBox(font, nameX, topY + 10, nameWidth, 20, Component.literal("术法名称"));
+        nameField.setValue(viewModel.getDisplayName());
+        nameField.setResponder(value -> {
+            viewModel.setDisplayName(value);
+            updatePreview();
+        });
+        addRenderableWidget(nameField);
 
-        for (int i = 0; i < tabCount; i++) {
-            final int tabIndex = i;
-            Button tabBtn = Button.builder(
-                Component.literal(tabLabels[i]),
-                b -> switchToTab(tabIndex)
-            ).bounds(tabX + i * tabWidth, tabY, tabWidth - 5, TAB_HEIGHT).build();
-            tabButtons[i] = tabBtn;
-            addRenderableWidget(tabBtn);
-        }
-
-        updateTabButtonStyles();
-    }
-
-    /**
-     * 切换到指定Tab
-     */
-    private void switchToTab(int tabIndex) {
-        currentTab = tabIndex;
-        clearContentWidgets();
-
-        switch (currentTab) {
-            case 0 -> initCoreTab();
-            case 1 -> initAttributeTab();
-            case 2 -> initEffectTab();
-            case 3 -> initFinalTab();
-        }
-
-        // 更新StepNavigationBar的当前步骤（如果存在）
-        if (stepNavigationBar != null) {
-            stepNavigationBar.setCurrentStep(currentTab);
-        }
-
-        updateTabButtonStyles();
-        updatePreview();
-    }
-
-    /**
-     * 更新Tab按钮样式（高亮当前Tab）
-     */
-    private void updateTabButtonStyles() {
-        for (int i = 0; i < tabButtons.length; i++) {
-            if (tabButtons[i] != null) {
-                String[] labels = {"①骨架", "②属性", "③效果", "④命名与预览"};
-                String prefix = (i == currentTab) ? "§e§l" : "§7";
-                tabButtons[i].setMessage(Component.literal(prefix + labels[i]));
+        // ID输入（右侧）
+        int idWidth = 120;
+        int idX = this.width - idWidth - 80;
+        idField = new EditBox(font, idX, topY + 10, idWidth, 20, Component.literal("术法ID"));
+        String currentId = viewModel.getSpellIdRaw();
+        idField.setValue(currentId != null ? currentId : "");
+        idField.setResponder(value -> {
+            if (!value.isBlank()) {
+                try {
+                    viewModel.setSpellId(value);
+                } catch (IllegalArgumentException ex) {
+                    Tiandao.LOGGER.warn("ID验证失败: {}", ex.getMessage());
+                }
             }
-        }
+        });
+        addRenderableWidget(idField);
+
+        // 生成ID按钮
+        generateIdButton = Button.builder(Component.literal("生成"), b -> {
+            String newId = SpellEditorViewModel.generateUniqueId();
+            idField.setValue(newId);
+            try {
+                viewModel.setSpellId(newId);
+            } catch (IllegalArgumentException ex) {
+                Tiandao.LOGGER.error("生成的ID无效: {}", ex.getMessage());
+            }
+        }).bounds(idX + idWidth + 5, topY + 10, 50, 20).build();
+        addRenderableWidget(generateIdButton);
     }
 
-    // ==================== Tab 0: 骨架选择 ====================
+    private void initLeftPanel() {
+        int leftX = 10;
+        int leftY = TOP_BAR_HEIGHT + 5;
+        int leftWidth = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) - 15;
+        int leftHeight = this.height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 10;
 
-    /**
-     * 初始化"骨架"Tab - 新版Widget布局
-     * 布局：顶部步骤导航，左侧预览面板，右侧组件卡片列表
-     */
-    private void initCoreTab() {
-        // 清空旧的卡片列表
-        sourceCards.clear();
-        carrierCards.clear();
-        formCards.clear();
-
-        // 1. 顶部步骤导航栏
-        int navHeight = 50;
-        stepNavigationBar = new StepNavigationBar(
-            20, 50, this.width - 40, navHeight,
-            viewModel, currentTab
-        );
-        stepNavigationBar.setOnStepChange(this::switchToTab);
-        addRenderableWidget(stepNavigationBar);
-        coreTabWidgets.add(stepNavigationBar);
-
-        // 2. 内容区域布局
-        int contentStartY = 50 + navHeight + 10;
-        int contentHeight = this.height - contentStartY - 70; // 留出底部按钮空间
-
-        // 左侧预览面板（40%宽度）
-        int previewWidth = (int)((this.width - 60) * 0.4);
-        previewPanel = new SpellPreviewPanel(
-            20, contentStartY, previewWidth, contentHeight,
-            viewModel
-        );
+        previewPanel = new SpellPreviewPanel(leftX, leftY, leftWidth, leftHeight, viewModel);
         addRenderableWidget(previewPanel);
-        coreTabWidgets.add(previewPanel);
+    }
 
-        // 右侧组件选择区域（60%宽度）
-        int rightX = 20 + previewWidth + 20;
-        int rightWidth = this.width - rightX - 20;
+    private void initRightPanel() {
+        int rightX = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) + 5;
+        int rightY = TOP_BAR_HEIGHT + 5;
+        int rightWidth = this.width - rightX - 10;
 
-        // 右侧使用三段式布局：起手式、载体、术式
-        int sectionHeight = (contentHeight - 40) / 3;
-        int yOffset = contentStartY;
+        int yOffset = 0;
 
-        // 起手式部分
-        yOffset = renderComponentSection("起手式", rightX, yOffset, rightWidth, sectionHeight,
+        // Source区域
+        yOffset = createCardSection("起手式 (Source)", rightX, yOffset, rightWidth,
             ComponentDataProvider.getSources(),
             viewModel.getSource() != null ? viewModel.getSource().id : null,
-            this::onSourceSelected,
-            sourceCards);
+            this::onSourceSelected, true);
 
-        yOffset += 10; // 间隙
+        yOffset += 15; // 区域间隙
 
-        // 载体部分
-        yOffset = renderComponentSection("载体", rightX, yOffset, rightWidth, sectionHeight,
+        // Carrier区域
+        yOffset = createCardSection("载体 (Carrier)", rightX, yOffset, rightWidth,
             ComponentDataProvider.getCarriers(),
             viewModel.getCarrier() != null ? viewModel.getCarrier().id : null,
-            this::onCarrierSelected,
-            carrierCards);
+            this::onCarrierSelected, true);
 
-        yOffset += 10; // 间隙
+        yOffset += 15;
 
-        // 术式部分
-        renderComponentSection("术式", rightX, yOffset, rightWidth, sectionHeight,
+        // Form区域
+        yOffset = createCardSection("术式 (Form)", rightX, yOffset, rightWidth,
             ComponentDataProvider.getForms(),
             viewModel.getForm() != null ? viewModel.getForm().id : null,
-            this::onFormSelected,
-            formCards);
+            this::onFormSelected, true);
 
-        // 底部导航按钮
-        addNavigationButtons(false, true);
+        yOffset += 15;
+
+        // Attributes区域（多选）
+        yOffset = createAttributesSection(rightX, yOffset, rightWidth);
+
+        yOffset += 15;
+
+        // Effects区域（多选）
+        yOffset = createEffectsSection(rightX, yOffset, rightWidth);
+
+        // 计算内容总高度和最大滚动偏移
+        int rightHeight = this.height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 10;
+        rightPanelContentHeight = yOffset;
+        maxScrollOffset = Math.max(0, rightPanelContentHeight - rightHeight);
+    }
+
+    private void initBottomBar() {
+        int bottomY = this.height - BOTTOM_BAR_HEIGHT + 5;
+        int buttonWidth = 100;
+        int spacing = 10;
+        int totalWidth = buttonWidth * 3 + spacing * 2;
+        int startX = (this.width - totalWidth) / 2;
+
+        // 导出JSON按钮
+        Button exportBtn = Button.builder(Component.literal("§a导出JSON"), b -> exportDefinition())
+            .bounds(startX, bottomY, buttonWidth, 20).build();
+        addRenderableWidget(exportBtn);
+
+        // 保存术法按钮
+        Button saveBtn = Button.builder(Component.literal("§b保存术法"), b -> saveSpellToPlayer())
+            .bounds(startX + buttonWidth + spacing, bottomY, buttonWidth, 20).build();
+        addRenderableWidget(saveBtn);
+
+        // 关闭按钮
+        Button closeBtn = Button.builder(Component.literal("§c关闭"), b -> onClose())
+            .bounds(startX + (buttonWidth + spacing) * 2, bottomY, buttonWidth, 20).build();
+        addRenderableWidget(closeBtn);
     }
 
     /**
-     * 渲染单个组件选择区域（使用ComponentCard）
-     * @return 下一个区域的Y坐标
+     * 创建单个组件区域的卡片（单选）
      */
-    private int renderComponentSection(String sectionTitle, int x, int y, int width, int height,
-                                      List<ComponentData> components, String selectedId,
-                                      java.util.function.Consumer<String> onSelect,
-                                      List<ComponentCard> cardList) {
-        // 渲染区域标题（在render方法中绘制，这里只记录位置）
-        int titleHeight = 15;
+    private int createCardSection(String sectionTitle, int x, int y, int width,
+                                  List<ComponentData> components, String selectedId,
+                                  java.util.function.Consumer<String> onSelect, boolean singleSelect) {
+        // 添加区域标题（相对坐标）
+        sectionTitles.add(new SectionTitle(sectionTitle, x, y));
+
+        // 标题高度
+        int titleHeight = 20;
         int cardStartY = y + titleHeight;
 
-        // 卡片布局：2列
-        int cardWidth = (width - 15) / 2; // 减去中间间隙
-        int cardHeight = 80;
-        int cardsPerRow = 2;
+        // 卡片布局：2列，间距12px（使用DaoTheme尺寸）
+        int spacing = DaoTheme.CARD_SPACING;
+        int cardWidth = DaoTheme.CARD_WIDTH;
+        int cardHeight = DaoTheme.CARD_HEIGHT;
 
+        int col = 0;
         int currentX = x;
         int currentY = cardStartY;
-        int col = 0;
 
         for (ComponentData data : components) {
             boolean isSelected = selectedId != null && selectedId.equals(data.getId());
 
-            ComponentCard card = new ComponentCard(
-                currentX, currentY, cardWidth, cardHeight,
-                data
-            );
-            card.setSelected(isSelected);
+            // 考虑滚动偏移计算实际Y坐标
+            int rightY = TOP_BAR_HEIGHT + 5;
+            int actualY = currentY + rightY - scrollOffset;
 
+            DaoCardWidget card = new DaoCardWidget(currentX, actualY, cardWidth, cardHeight, data);
+            card.setSelected(isSelected);
             card.setOnClickCallback(() -> {
                 onSelect.accept(data.getId());
-                // 刷新当前Tab以更新选中状态
-                switchToTab(0);
+                refreshCards();
             });
 
             addRenderableWidget(card);
-            coreTabWidgets.add(card);
-            cardList.add(card);
+            allCards.add(card);
 
-            // 计算下一个卡片位置
             col++;
-            if (col >= cardsPerRow) {
+            if (col >= 2) { // 2列布局
                 col = 0;
                 currentX = x;
-                currentY += cardHeight + 5;
+                currentY += cardHeight + spacing;
             } else {
-                currentX += cardWidth + 5;
+                currentX += cardWidth + spacing;
             }
         }
 
-        return y + height;
+        if (col > 0) {
+            currentY += cardHeight + spacing;
+        }
+
+        return currentY + 10;
     }
+
+    /**
+     * 创建Attributes区域（多选）
+     */
+    private int createAttributesSection(int x, int y, int width) {
+        // 添加区域标题
+        sectionTitles.add(new SectionTitle("§6§l属性 (Attributes)", x, y));
+
+        int titleHeight = 20;
+        int cardStartY = y + titleHeight;
+
+        List<SpellEditorViewModel.SpellAttribute> allAttrs = SpellEditorViewModel.getAttributeOptions();
+        List<SpellEditorViewModel.SpellAttribute> selectedAttrs = viewModel.getAttributes();
+
+        // 卡片布局：2列，间距12px（使用DaoTheme尺寸）
+        int spacing = DaoTheme.CARD_SPACING;
+        int cardWidth = DaoTheme.CARD_WIDTH;
+        int cardHeight = DaoTheme.CARD_HEIGHT;
+
+        int col = 0;
+        int currentX = x;
+        int currentY = cardStartY;
+
+        for (SpellEditorViewModel.SpellAttribute attr : allAttrs) {
+            boolean isSelected = selectedAttrs.stream().anyMatch(a -> a.id.equals(attr.id));
+            boolean canAdd = selectedAttrs.size() < 3;
+
+            // 创建ComponentData
+            ComponentData data = ComponentData.create(attr.id, attr.label, "◆", attr.description);
+
+            int rightY = TOP_BAR_HEIGHT + 5;
+            int actualY = currentY + rightY - scrollOffset;
+
+            DaoCardWidget card = new DaoCardWidget(currentX, actualY, cardWidth, cardHeight, data);
+            card.setSelected(isSelected);
+            // Note: Active state is managed by whether the card is added to the widget list
+            // If canAdd is false and not selected, we still add it but don't respond to clicks
+            card.setOnClickCallback(() -> {
+                if (isSelected) {
+                    viewModel.removeAttribute(attr.id);
+                } else if (canAdd) {
+                    viewModel.addAttribute(attr.id);
+                }
+                refreshCards();
+            });
+
+            addRenderableWidget(card);
+            allCards.add(card);
+
+            col++;
+            if (col >= 2) { // 2列布局
+                col = 0;
+                currentX = x;
+                currentY += cardHeight + spacing;
+            } else {
+                currentX += cardWidth + spacing;
+            }
+        }
+
+        if (col > 0) {
+            currentY += cardHeight + spacing;
+        }
+
+        return currentY + 10;
+    }
+
+    /**
+     * 创建Effects区域（多选）
+     */
+    private int createEffectsSection(int x, int y, int width) {
+        // 添加区域标题
+        sectionTitles.add(new SectionTitle("§6§l效果 (Effects)", x, y));
+
+        int titleHeight = 20;
+        int cardStartY = y + titleHeight;
+
+        List<SpellEditorViewModel.SpellEffect> allEffects = SpellEditorViewModel.getEffectOptions();
+        List<SpellEditorViewModel.SpellEffect> selectedEffects = viewModel.getEffects();
+
+        // 卡片布局：2列，间距12px（使用DaoTheme尺寸）
+        int spacing = DaoTheme.CARD_SPACING;
+        int cardWidth = DaoTheme.CARD_WIDTH;
+        int cardHeight = DaoTheme.CARD_HEIGHT;
+
+        int col = 0;
+        int currentX = x;
+        int currentY = cardStartY;
+
+        for (SpellEditorViewModel.SpellEffect effect : allEffects) {
+            boolean isSelected = selectedEffects.stream().anyMatch(e -> e.id.equals(effect.id));
+            boolean canAdd = selectedEffects.size() < 4;
+
+            // 创建ComponentData
+            ComponentData data = ComponentData.create(effect.id, effect.label, "★", effect.description);
+
+            int rightY = TOP_BAR_HEIGHT + 5;
+            int actualY = currentY + rightY - scrollOffset;
+
+            DaoCardWidget card = new DaoCardWidget(currentX, actualY, cardWidth, cardHeight, data);
+            card.setSelected(isSelected);
+            // Note: Active state is managed by whether the card is added to the widget list
+            // If canAdd is false and not selected, we still add it but don't respond to clicks
+            card.setOnClickCallback(() -> {
+                if (isSelected) {
+                    viewModel.removeEffect(effect.id);
+                } else if (canAdd) {
+                    viewModel.addEffect(effect.id);
+                }
+                refreshCards();
+            });
+
+            addRenderableWidget(card);
+            allCards.add(card);
+
+            col++;
+            if (col >= 2) { // 2列布局
+                col = 0;
+                currentX = x;
+                currentY += cardHeight + spacing;
+            } else {
+                currentX += cardWidth + spacing;
+            }
+        }
+
+        if (col > 0) {
+            currentY += cardHeight + spacing;
+        }
+
+        return currentY + 10;
+    }
+
+    /**
+     * 刷新所有卡片（重新初始化）
+     */
+    private void refreshCards() {
+        // 移除所有旧卡片
+        allCards.forEach(card -> this.removeWidget(card));
+        allCards.clear();
+        sectionTitles.clear();
+
+        // 重新初始化右侧面板
+        initRightPanel();
+
+        // 更新预览面板
+        if (previewPanel != null) {
+            previewPanel.updatePreview();
+        }
+
+        updatePreview();
+    }
+
 
     private void onSourceSelected(String id) {
         viewModel.setSource(id);
@@ -285,393 +442,6 @@ public class SpellEditorScreen extends Screen {
         }
     }
 
-    // ==================== Tab 1: 属性选择 ====================
-
-    /**
-     * 初始化"属性"Tab
-     * 布局：左侧是五行/阴阳/意境按钮，右侧是已选属性列表 + 预览
-     */
-    private void initAttributeTab() {
-        int contentY = 50;
-        int leftWidth = (this.width - 60) * 2 / 3;
-        int rightWidth = (this.width - 60) / 3;
-        int leftX = 20;
-        int rightX = leftX + leftWidth + 20;
-
-        // 左侧：五行属性选择器
-        int labelY = contentY;
-        int buttonY = contentY + 20;
-
-        // 所有属性（现在只有五行）
-        List<SpellEditorViewModel.SpellAttribute> allAttrs = SpellEditorViewModel.getAttributeOptions();
-
-        for (SpellEditorViewModel.SpellAttribute attr : allAttrs) {
-            renderAttributeButton(attr, leftX, buttonY, 120);
-            buttonY += BUTTON_HEIGHT + 5;
-        }
-
-        // 右侧：已选属性列表
-        renderSelectedAttributesList(rightX, contentY, rightWidth);
-
-        // 导航按钮
-        addNavigationButtons(true, true);
-    }
-
-    /**
-     * 渲染单个属性按钮
-     */
-    private void renderAttributeButton(SpellEditorViewModel.SpellAttribute attr, int x, int y, int width) {
-        List<SpellEditorViewModel.SpellAttribute> current = viewModel.getAttributes();
-        boolean isSelected = current.stream().anyMatch(a -> a.id.equals(attr.id));
-        boolean canAdd = current.size() < 3;
-
-        String prefix = isSelected ? "§a●" : (canAdd ? "§7" : "§8");
-
-        Button btn = Button.builder(
-            Component.literal(prefix + attr.label),
-            b -> {
-                if (isSelected) {
-                    viewModel.removeAttribute(attr.id);
-                } else if (canAdd) {
-                    viewModel.addAttribute(attr.id);
-                }
-                switchToTab(1); // 刷新
-            }
-        ).bounds(x, y, width, BUTTON_HEIGHT).build();
-
-        btn.active = isSelected || canAdd;
-        addRenderableWidget(btn);
-        attrTabWidgets.add(btn);
-    }
-
-    /**
-     * 渲染右侧已选属性列表
-     */
-    private void renderSelectedAttributesList(int x, int y, int width) {
-        // 在render()方法中绘制文本
-    }
-
-    // ==================== Tab 2: 效果选择 ====================
-
-    /**
-     * 初始化"效果"Tab
-     * 布局：左侧是效果按钮，右侧是已选效果列表 + 描述
-     */
-    private void initEffectTab() {
-        int contentY = 50;
-        int leftWidth = (this.width - 60) * 2 / 3;
-        int rightWidth = (this.width - 60) / 3;
-        int leftX = 20;
-        int rightX = leftX + leftWidth + 20;
-
-        // 左侧：效果选择
-        int buttonY = contentY + 20;
-        List<SpellEditorViewModel.SpellEffect> allEffects = SpellEditorViewModel.getEffectOptions();
-
-        int col = 0;
-        int colWidth = 100;
-        int colX = leftX;
-
-        for (SpellEditorViewModel.SpellEffect effect : allEffects) {
-            renderEffectButton(effect, colX, buttonY, colWidth);
-
-            col++;
-            if (col >= 3) {
-                col = 0;
-                buttonY += BUTTON_HEIGHT + 5;
-                colX = leftX;
-            } else {
-                colX += colWidth + 10;
-            }
-        }
-
-        // 右侧：已选效果列表
-        renderSelectedEffectsList(rightX, contentY, rightWidth);
-
-        // 导航按钮
-        addNavigationButtons(true, true);
-    }
-
-    /**
-     * 渲染单个效果按钮
-     */
-    private void renderEffectButton(SpellEditorViewModel.SpellEffect effect, int x, int y, int width) {
-        List<SpellEditorViewModel.SpellEffect> current = viewModel.getEffects();
-        boolean isSelected = current.stream().anyMatch(e -> e.id.equals(effect.id));
-        boolean canAdd = current.size() < 4;
-
-        String prefix = isSelected ? "§b●" : (canAdd ? "§7" : "§8");
-
-        Button btn = Button.builder(
-            Component.literal(prefix + effect.label),
-            b -> {
-                if (isSelected) {
-                    viewModel.removeEffect(effect.id);
-                } else if (canAdd) {
-                    viewModel.addEffect(effect.id);
-                }
-                switchToTab(2); // 刷新
-            }
-        ).bounds(x, y, width, BUTTON_HEIGHT).build();
-
-        btn.active = isSelected || canAdd;
-        addRenderableWidget(btn);
-        effectTabWidgets.add(btn);
-    }
-
-    /**
-     * 渲染右侧已选效果列表
-     */
-    private void renderSelectedEffectsList(int x, int y, int width) {
-        // 在render()方法中绘制文本
-    }
-
-    // ==================== Tab 3: 命名与预览 ====================
-
-    /**
-     * 初始化"命名与预览"Tab
-     * 布局：上方输入术法ID和名称，中间是完整预览，底部是导出按钮
-     */
-    private void initFinalTab() {
-        int contentY = 50;
-        int leftX = 20;
-        int fieldWidth = (this.width - 60) / 2 - 10;
-
-        // ID输入
-        idField = new EditBox(this.font, leftX, contentY, fieldWidth - 60, BUTTON_HEIGHT, Component.literal("术法ID"));
-        // 显示当前ID或提示文本
-        String currentId = viewModel.getSpellIdRaw();
-        idField.setValue(currentId != null ? currentId : "§7[自动生成]");
-        idField.setResponder(value -> {
-            // 移除提示文本
-            if (value.equals("§7[自动生成]") || value.isBlank()) {
-                return;
-            }
-            try {
-                viewModel.setSpellId(value);
-                updatePreview();
-            } catch (IllegalArgumentException ex) {
-                // ID验证失败，显示错误提示（在保存时会再次验证）
-                Tiandao.LOGGER.warn("ID验证失败: {}", ex.getMessage());
-            }
-        });
-        addRenderableWidget(idField);
-        finalTabWidgets.add(idField);
-
-        // 生成新ID按钮
-        Button generateIdBtn = Button.builder(
-            Component.literal("§a生成"),
-            b -> {
-                String newId = SpellEditorViewModel.generateUniqueId();
-                idField.setValue(newId);
-                try {
-                    viewModel.setSpellId(newId);
-                    updatePreview();
-                } catch (IllegalArgumentException ex) {
-                    Tiandao.LOGGER.error("生成的ID无效（不应发生）: {}", ex.getMessage());
-                }
-            }
-        ).bounds(leftX + fieldWidth - 55, contentY, 50, BUTTON_HEIGHT).build();
-        addRenderableWidget(generateIdBtn);
-        finalTabWidgets.add(generateIdBtn);
-
-        // 名称输入
-        nameField = new EditBox(this.font, leftX + fieldWidth + 20, contentY, fieldWidth, BUTTON_HEIGHT, Component.literal("术法名称"));
-        nameField.setValue(viewModel.getDisplayName());
-        nameField.setResponder(value -> {
-            viewModel.setDisplayName(value);
-            updatePreview();
-        });
-        addRenderableWidget(nameField);
-        finalTabWidgets.add(nameField);
-
-        // 随机名称按钮
-        Button randomNameBtn = Button.builder(
-            Component.literal("§d随机名称"),
-            b -> generateRandomName()
-        ).bounds(leftX + fieldWidth * 2 + 30, contentY, 100, BUTTON_HEIGHT).build();
-        addRenderableWidget(randomNameBtn);
-        finalTabWidgets.add(randomNameBtn);
-
-        // 描述输入（多行）
-        int descY = contentY + 30;
-        EditBox descField = new EditBox(this.font, leftX, descY, this.width - 40, BUTTON_HEIGHT, Component.literal("描述"));
-        descField.setValue(viewModel.getDescription());
-        descField.setResponder(value -> {
-            viewModel.setDescription(value);
-            updatePreview();
-        });
-        addRenderableWidget(descField);
-        finalTabWidgets.add(descField);
-
-        // 基础数值输入
-        int statsY = descY + 40;
-        int statWidth = (this.width - 80) / 5;
-
-        EditBox damageField = createNumberField(leftX, statsY, statWidth - 5, viewModel::setBaseDamage, "伤害");
-        damageField.setValue(String.format("%.1f", viewModel.getBaseDamage()));
-        addRenderableWidget(damageField);
-        finalTabWidgets.add(damageField);
-
-        EditBox speedField = createNumberField(leftX + statWidth, statsY, statWidth - 5, viewModel::setSpeed, "速度");
-        speedField.setValue(String.format("%.1f", viewModel.getSpeed()));
-        addRenderableWidget(speedField);
-        finalTabWidgets.add(speedField);
-
-        EditBox rangeField = createNumberField(leftX + statWidth * 2, statsY, statWidth - 5, viewModel::setRange, "范围");
-        rangeField.setValue(String.format("%.1f", viewModel.getRange()));
-        addRenderableWidget(rangeField);
-        finalTabWidgets.add(rangeField);
-
-        EditBox cooldownField = createNumberField(leftX + statWidth * 3, statsY, statWidth - 5, viewModel::setCooldown, "冷却");
-        cooldownField.setValue(String.format("%.1f", viewModel.getCooldown()));
-        addRenderableWidget(cooldownField);
-        finalTabWidgets.add(cooldownField);
-
-        spiritCostLabel = new StringWidget(leftX + statWidth * 4, statsY + 2, statWidth - 5, BUTTON_HEIGHT,
-            Component.literal("灵力消耗：--"), this.font);
-        addRenderableWidget(spiritCostLabel);
-        finalTabWidgets.add(spiritCostLabel);
-        updateSpiritCostLabel();
-
-        // 完整预览区域（在render()中绘制）
-
-        // 导出JSON按钮
-        Button exportBtn = Button.builder(
-            Component.literal("§a导出 JSON"),
-            b -> exportDefinition()
-        ).bounds(leftX, this.height - 60, 150, BUTTON_HEIGHT).build();
-        addRenderableWidget(exportBtn);
-        finalTabWidgets.add(exportBtn);
-
-        Button saveBtn = Button.builder(
-            Component.literal("§b保存术法"),
-            b -> saveSpellToPlayer()
-        ).bounds(leftX + 160, this.height - 60, 150, BUTTON_HEIGHT).build();
-        addRenderableWidget(saveBtn);
-        finalTabWidgets.add(saveBtn);
-
-        // 导航按钮
-        addNavigationButtons(true, false);
-    }
-
-    /**
-     * 生成随机术法名称
-     */
-    private void generateRandomName() {
-        String[] prefixes = {"破", "灭", "焚", "冰", "雷", "风", "土", "金", "木", "水"};
-        String[] suffixes = {"术", "法", "诀", "咒", "印", "阵", "符", "劫", "炎", "寒"};
-
-        String prefix = prefixes[(int) (Math.random() * prefixes.length)];
-        String suffix = suffixes[(int) (Math.random() * suffixes.length)];
-        String randomName = prefix + suffix;
-
-        viewModel.setDisplayName(randomName);
-        if (nameField != null) {
-            nameField.setValue(randomName);
-        }
-        updatePreview();
-    }
-
-    // ==================== 通用辅助方法 ====================
-
-    /**
-     * 添加上一页/下一步按钮
-     */
-    private void addNavigationButtons(boolean showPrev, boolean showNext) {
-        int bottomY = this.height - 35;
-
-        if (showPrev) {
-            Button prevBtn = Button.builder(
-                Component.literal("§7« 上一页"),
-                b -> switchToTab(currentTab - 1)
-            ).bounds(20, bottomY, 100, BUTTON_HEIGHT).build();
-            addRenderableWidget(prevBtn);
-            getCurrentTabWidgets().add(prevBtn);
-        }
-
-        if (showNext) {
-            Button nextBtn = Button.builder(
-                Component.literal("§e下一页 »"),
-                b -> switchToTab(currentTab + 1)
-            ).bounds(this.width - 120, bottomY, 100, BUTTON_HEIGHT).build();
-            addRenderableWidget(nextBtn);
-            getCurrentTabWidgets().add(nextBtn);
-        }
-
-        // 关闭按钮（所有Tab都有）
-        Button closeBtn = Button.builder(
-            Component.literal("§c关闭"),
-            b -> onClose()
-        ).bounds(this.width / 2 - 50, bottomY, 100, BUTTON_HEIGHT).build();
-        addRenderableWidget(closeBtn);
-        getCurrentTabWidgets().add(closeBtn);
-    }
-
-    /**
-     * 获取当前Tab的组件列表
-     */
-    private List<net.minecraft.client.gui.components.Renderable> getCurrentTabWidgets() {
-        return switch (currentTab) {
-            case 0 -> coreTabWidgets;
-            case 1 -> attrTabWidgets;
-            case 2 -> effectTabWidgets;
-            case 3 -> finalTabWidgets;
-            default -> new ArrayList<>();
-        };
-    }
-
-    /**
-     * 清除所有内容区域的组件（保留Tab按钮）
-     */
-    private void clearContentWidgets() {
-        spiritCostLabel = null;
-        stepNavigationBar = null;
-        previewPanel = null;
-        sourceCards.clear();
-        carrierCards.clear();
-        formCards.clear();
-
-        // 移除所有Tab的组件（不仅仅是当前Tab）
-        List<List<net.minecraft.client.gui.components.Renderable>> allTabWidgets = List.of(
-            coreTabWidgets, attrTabWidgets, effectTabWidgets, finalTabWidgets
-        );
-
-        for (List<net.minecraft.client.gui.components.Renderable> tabWidgets : allTabWidgets) {
-            tabWidgets.forEach(widget -> {
-                if (widget instanceof net.minecraft.client.gui.components.events.GuiEventListener listener) {
-                    this.removeWidget(listener);
-                }
-            });
-            tabWidgets.clear();
-        }
-    }
-
-    /**
-     * 清除所有Tab的组件缓存
-     */
-    private void clearAllTabWidgets() {
-        coreTabWidgets.clear();
-        attrTabWidgets.clear();
-        effectTabWidgets.clear();
-        finalTabWidgets.clear();
-    }
-
-    /**
-     * 创建数值输入框
-     */
-    private EditBox createNumberField(int x, int y, int width, java.util.function.DoubleConsumer consumer, String placeholder) {
-        EditBox box = new EditBox(this.font, x, y, width, BUTTON_HEIGHT, Component.literal(placeholder));
-        box.setResponder(value -> {
-            try {
-                double val = Double.parseDouble(value);
-                consumer.accept(val);
-                updatePreview();
-            } catch (NumberFormatException ignored) {
-            }
-        });
-        return box;
-    }
 
     /**
      * 导出JSON定义
@@ -738,201 +508,76 @@ public class SpellEditorScreen extends Screen {
      */
     private void updatePreview() {
         previewText = viewModel.getPreviewText();
-        updateSpiritCostLabel();
+        // Spirit cost is displayed in the preview panel, no separate label needed
     }
 
-    private void updateSpiritCostLabel() {
-        if (this.spiritCostLabel != null) {
-            double cost = viewModel.getComputedSpiritCost();
-            this.spiritCostLabel.setMessage(Component.literal(
-                String.format(Locale.ROOT, "灵力消耗：%.1f", cost)
-            ));
+    // ==================== 滚动方法 ====================
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        // 只在右侧面板区域响应滚动
+        int rightX = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) + 5;
+        if (mouseX >= rightX) {
+            // 向上滚动为正值，向下滚动为负值
+            // 每次滚动移动20像素
+            int scrollAmount = (int)(delta * 20);
+            scrollOffset = Math.max(0, Math.min(maxScrollOffset, scrollOffset - scrollAmount));
+
+            // 刷新卡片位置
+            refreshCards();
+            return true;
         }
+
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     // ==================== 渲染方法 ====================
 
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics);
+        // 1. 渲染背景渐变（中心亮 → 边缘暗）+ 暗角效果
+        DaoTheme.renderGradientBackground(guiGraphics, this.width, this.height);
+
+        // 2. 渲染居中容器 + 双层边框 + 投影
+        // 注意：这个容器只是装饰性的，不影响实际组件位置
+        // 实际的左右面板仍然使用全屏布局
+        // int[] container = DaoTheme.renderCenteredContainer(guiGraphics, this.width, this.height);
+        // int panelX = container[0];
+        // int panelY = container[1];
+        // int panelW = container[2];
+        // int panelH = container[3];
+
+        // 3. 计算右侧面板区域（保持原有布局）
+        int rightX = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) + 5;
+        int rightY = TOP_BAR_HEIGHT + 5;
+        int rightWidth = this.width - rightX - 10;
+        int rightHeight = this.height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 10;
+
+        // 4. 启用scissor裁剪（右侧滚动区域）
+        guiGraphics.enableScissor(rightX, rightY, rightX + rightWidth, rightY + rightHeight);
+
+        // 5. 渲染区域标题
+        for (SectionTitle section : sectionTitles) {
+            int actualY = section.y + rightY - scrollOffset;
+            // 只渲染可见的标题
+            if (actualY >= rightY - 20 && actualY <= rightY + rightHeight) {
+                guiGraphics.drawString(font, section.title, section.x, actualY, DaoTheme.TEXT_CINNABAR, false);
+            }
+        }
+
+        // 6. 渲染所有Widget（包括卡片）
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        // 绘制标题
-        guiGraphics.drawCenteredString(font, this.title, this.width / 2, 50, 0xFFFFFF);
+        // 7. 禁用scissor裁剪
+        guiGraphics.disableScissor();
 
-        // 根据当前Tab渲染不同内容
-        switch (currentTab) {
-            case 0 -> renderCoreTabContent(guiGraphics);
-            case 1 -> renderAttributeTabContent(guiGraphics);
-            case 2 -> renderEffectTabContent(guiGraphics);
-            case 3 -> renderFinalTabContent(guiGraphics);
-        }
-    }
-
-    /**
-     * 渲染骨架Tab的文本内容 - 新版布局
-     */
-    private void renderCoreTabContent(net.minecraft.client.gui.GuiGraphics guiGraphics) {
-        // 新版布局中，Widget自己负责渲染，这里只需要渲染区域标题
-
-        int navHeight = 50;
-        int contentStartY = 50 + navHeight + 10;
-        int contentHeight = this.height - contentStartY - 70;
-
-        int previewWidth = (int)((this.width - 60) * 0.4);
-        int rightX = 20 + previewWidth + 20;
-
-        int sectionHeight = (contentHeight - 40) / 3;
-        int yOffset = contentStartY;
-
-        // 起手式标题
-        guiGraphics.drawString(font, "§6§l起手式 (Source)", rightX, yOffset, SpellEditorColors.TEXT_GOLD, false);
-        yOffset += sectionHeight + 10;
-
-        // 载体标题
-        guiGraphics.drawString(font, "§6§l载体 (Carrier)", rightX, yOffset, SpellEditorColors.TEXT_GOLD, false);
-        yOffset += sectionHeight + 10;
-
-        // 术式标题
-        guiGraphics.drawString(font, "§6§l术式 (Form)", rightX, yOffset, SpellEditorColors.TEXT_GOLD, false);
-    }
-
-    /**
-     * 渲染属性Tab的文本内容
-     */
-    private void renderAttributeTabContent(net.minecraft.client.gui.GuiGraphics guiGraphics) {
-        int contentY = 50;
-        int leftWidth = (this.width - 60) * 2 / 3;
-        int rightX = 20 + leftWidth + 20;
-
-        // 左侧标题
-        guiGraphics.drawString(font, "§6§l五行属性", 20, contentY, 0xFFDD44);
-
-        // 右侧已选属性列表
-        int listY = contentY;
-        guiGraphics.drawString(font, "§7§l已选属性(最多3):", rightX, listY, 0xCCCCCC);
-        listY += 15;
-
-        List<SpellEditorViewModel.SpellAttribute> attrs = viewModel.getAttributes();
-        if (attrs.isEmpty()) {
-            guiGraphics.drawString(font, "§8暂无", rightX, listY, 0x888888);
-        } else {
-            for (SpellEditorViewModel.SpellAttribute attr : attrs) {
-                guiGraphics.drawString(font, "§e● " + attr.label + " §7(" + attr.type + ")", rightX, listY, 0xFFDD44);
-                listY += 11;
-            }
-        }
-
-        // 底部预览
-        int previewY = this.height - 100;
-        guiGraphics.drawString(font, "§7§l预览:", 20, previewY, 0xCCCCCC);
-        String[] lines = previewText.split("\n");
-        for (int i = 0; i < Math.min(lines.length, 3); i++) {
-            if (!lines[i].trim().isEmpty()) {
-                guiGraphics.drawString(font, "§7" + lines[i].trim(), 20, previewY + 12 + i * 11, 0xAAAAAA);
-            }
-        }
-    }
-
-    /**
-     * 渲染效果Tab的文本内容
-     */
-    private void renderEffectTabContent(net.minecraft.client.gui.GuiGraphics guiGraphics) {
-        int contentY = 50;
-        int leftWidth = (this.width - 60) * 2 / 3;
-        int rightX = 20 + leftWidth + 20;
-
-        // 左侧标题
-        guiGraphics.drawString(font, "§6§l效果选择", 20, contentY, 0xFFDD44);
-
-        // 右侧已选效果列表
-        int listY = contentY;
-        guiGraphics.drawString(font, "§7§l已选效果(最多4):", rightX, listY, 0xCCCCCC);
-        listY += 15;
-
-        List<SpellEditorViewModel.SpellEffect> effects = viewModel.getEffects();
-        if (effects.isEmpty()) {
-            guiGraphics.drawString(font, "§8暂无", rightX, listY, 0x888888);
-        } else {
-            for (SpellEditorViewModel.SpellEffect effect : effects) {
-                guiGraphics.drawString(font, "§b● " + effect.label, rightX, listY, 0x55FFFF);
-                listY += 11;
-            }
-        }
-
-        // 底部预览
-        int previewY = this.height - 100;
-        guiGraphics.drawString(font, "§7§l预览:", 20, previewY, 0xCCCCCC);
-        String[] lines = previewText.split("\n");
-        for (int i = 0; i < Math.min(lines.length, 3); i++) {
-            if (!lines[i].trim().isEmpty()) {
-                guiGraphics.drawString(font, "§7" + lines[i].trim(), 20, previewY + 12 + i * 11, 0xAAAAAA);
-            }
-        }
-    }
-
-    /**
-     * 渲染命名与预览Tab的文本内容
-     */
-    private void renderFinalTabContent(net.minecraft.client.gui.GuiGraphics guiGraphics) {
-        int contentY = 50;
-
-        // 标签
-        guiGraphics.drawString(font, "§7术法ID:", 20, contentY - 10, 0xCCCCCC);
-        guiGraphics.drawString(font, "§7术法名称:", 20 + (this.width - 60) / 2 + 10, contentY - 10, 0xCCCCCC);
-
-        // 描述标签
-        guiGraphics.drawString(font, "§7描述:", 20, contentY + 20, 0xCCCCCC);
-
-        // 数值标签
-        int statsY = contentY + 60;
-        guiGraphics.drawString(font, "§7伤害:", 20, statsY - 10, 0xCCCCCC);
-        int statWidth = (this.width - 80) / 5;
-        guiGraphics.drawString(font, "§7速度:", 20 + statWidth, statsY - 10, 0xCCCCCC);
-        guiGraphics.drawString(font, "§7范围:", 20 + statWidth * 2, statsY - 10, 0xCCCCCC);
-        guiGraphics.drawString(font, "§7冷却:", 20 + statWidth * 3, statsY - 10, 0xCCCCCC);
-
-        // 完整预览
-        int previewY = statsY + 40;
-        guiGraphics.drawString(font, "§6§l=== 完整预览 ===", 20, previewY, 0xFFDD44);
-        previewY += 15;
-
-        // 骨架
-        String sourceLabel = viewModel.getSource() != null ? viewModel.getSource().label : "未选择";
-        String carrierLabel = viewModel.getCarrier() != null ? viewModel.getCarrier().label : "未选择";
-        String formLabel = viewModel.getForm() != null ? viewModel.getForm().label : "未选择";
-        guiGraphics.drawString(font, "§e骨架: §7" + sourceLabel + " → " + carrierLabel + " → " + formLabel, 20, previewY, 0xFFFFFF);
-        previewY += 11;
-
-        // 属性
-        List<SpellEditorViewModel.SpellAttribute> attrs = viewModel.getAttributes();
-        String attrStr = attrs.isEmpty() ? "无" : String.join(", ", attrs.stream().map(a -> a.label).toList());
-        guiGraphics.drawString(font, "§e属性: §7" + attrStr, 20, previewY, 0xFFFFFF);
-        previewY += 11;
-
-        // 效果
-        List<SpellEditorViewModel.SpellEffect> effects = viewModel.getEffects();
-        String effectStr = effects.isEmpty() ? "无" : String.join(", ", effects.stream().map(e -> e.label).toList());
-        guiGraphics.drawString(font, "§b效果: §7" + effectStr, 20, previewY, 0xFFFFFF);
-        previewY += 11;
-
-        // 剑修强化提示
-        if (viewModel.isSwordQiEnhanced()) {
-            previewY += 5;
-            String enhanceText = String.format("§e§l【剑修强化激活！】 §7持剑时：伤害×%.1f 速度×%.1f 范围×%.1f",
-                viewModel.getCalculatedSwordDamageMultiplier(),
-                viewModel.getCalculatedSwordSpeedMultiplier(),
-                viewModel.getCalculatedSwordRangeMultiplier());
-            guiGraphics.drawString(font, enhanceText, 20, previewY, 0xFFDD00);
-        }
-
-        // 描述预览
-        previewY += 15;
-        String[] lines = previewText.split("\n");
-        for (int i = 0; i < Math.min(lines.length, 2); i++) {
-            if (!lines[i].trim().isEmpty()) {
-                guiGraphics.drawString(font, "§7" + lines[i].trim(), 20, previewY + i * 11, 0xAAAAAA);
-            }
+        // 8. 渲染边缘渐隐遮罩（Fade Mask）- 制造"展开卷轴"效果
+        boolean hasScroll = maxScrollOffset > 0;
+        if (hasScroll) {
+            DaoTheme.renderFadeMask(guiGraphics, rightX, rightY, rightWidth, rightHeight,
+                scrollOffset > 0,  // 上边缘：当可向上滚动时显示
+                scrollOffset < maxScrollOffset  // 下边缘：当可向下滚动时显示
+            );
         }
     }
 

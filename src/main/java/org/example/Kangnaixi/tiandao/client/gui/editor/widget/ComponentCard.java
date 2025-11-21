@@ -57,7 +57,14 @@ public class ComponentCard extends AbstractWidget {
         }
 
         // 2. 渲染背景和边框
-        int borderColor = selected ? SpellEditorColors.BORDER_GOLD : SpellEditorColors.BORDER_DARK;
+        int borderColor;
+        if (selected) {
+            borderColor = SpellEditorColors.CARD_BORDER_SELECTED;
+        } else if (isHovered) {
+            borderColor = SpellEditorColors.CARD_BORDER_HOVER;
+        } else {
+            borderColor = SpellEditorColors.CARD_BORDER_NORMAL;
+        }
         SpellEditorRenderUtils.renderPanelBackground(
             graphics, getX(), getY(), width, height, bgColor, borderColor
         );
@@ -120,12 +127,18 @@ public class ComponentCard extends AbstractWidget {
     }
 
     private void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        List<Component> tooltipLines = data.getTooltipLines().stream()
-            .map(Component::literal)
-            .collect(java.util.stream.Collectors.toList());
+        List<String> tooltipLines = data.getTooltipLines();
 
         if (!tooltipLines.isEmpty()) {
-            graphics.renderTooltip(Minecraft.getInstance().font, tooltipLines, java.util.Optional.empty(), mouseX, mouseY);
+            Minecraft mc = Minecraft.getInstance();
+            int screenWidth = mc.getWindow().getGuiScaledWidth();
+            int screenHeight = mc.getWindow().getGuiScaledHeight();
+            int navBarBottom = 60; // StepNavigationBar的底部位置 (y=10 + height=50)
+
+            SpellEditorRenderUtils.renderSmartTooltip(
+                graphics, mc.font, tooltipLines,
+                mouseX, mouseY, screenWidth, screenHeight, navBarBottom
+            );
         }
     }
 
