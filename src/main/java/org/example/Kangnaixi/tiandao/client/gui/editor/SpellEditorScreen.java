@@ -33,6 +33,11 @@ public class SpellEditorScreen extends Screen {
 
     private final SpellEditorViewModel viewModel;
 
+    // 容器坐标（居中容器）
+    private int panelX, panelY, panelW, panelH;
+    private int leftX, leftY, leftW, leftH;
+    private int rightX, rightY, rightW, rightH;
+
     // 顶部栏组件
     private EditBox nameField;
     private EditBox idField;
@@ -76,6 +81,23 @@ public class SpellEditorScreen extends Screen {
         sectionTitles.clear();
         scrollOffset = 0;
 
+        // 计算居中容器坐标
+        panelW = Math.min(this.width - 40, 1000);
+        panelX = (this.width - panelW) / 2;
+        panelY = 20;
+        panelH = this.height - 80;
+
+        // 基于容器计算左右栏坐标
+        leftX = panelX + 12;
+        leftW = (int)(panelW * 0.3f) - 16;
+        leftY = panelY + TOP_BAR_HEIGHT + 8;
+        leftH = panelH - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 16;
+
+        rightX = leftX + leftW + 12;
+        rightW = panelW - leftW - 24;
+        rightY = panelY + TOP_BAR_HEIGHT + 8;
+        rightH = panelH - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 16;
+
         // 初始化顶部栏
         initTopBar();
 
@@ -90,11 +112,11 @@ public class SpellEditorScreen extends Screen {
     }
 
     private void initTopBar() {
-        int topY = 5;
+        int topY = panelY + 5;
 
-        // 术法名输入（中间）
+        // 术法名输入（容器中间）
         int nameWidth = 200;
-        int nameX = this.width / 2 - nameWidth / 2;
+        int nameX = panelX + (panelW - nameWidth) / 2;
         nameField = new EditBox(font, nameX, topY + 10, nameWidth, 20, Component.literal("术法名称"));
         nameField.setValue(viewModel.getDisplayName());
         nameField.setResponder(value -> {
@@ -103,9 +125,9 @@ public class SpellEditorScreen extends Screen {
         });
         addRenderableWidget(nameField);
 
-        // ID输入（右侧）
+        // ID输入（容器右侧）
         int idWidth = 120;
-        int idX = this.width - idWidth - 80;
+        int idX = panelX + panelW - idWidth - 80;
         idField = new EditBox(font, idX, topY + 10, idWidth, 20, Component.literal("术法ID"));
         String currentId = viewModel.getSpellIdRaw();
         idField.setValue(currentId != null ? currentId : "");
@@ -134,24 +156,18 @@ public class SpellEditorScreen extends Screen {
     }
 
     private void initLeftPanel() {
-        int leftX = 10;
-        int leftY = TOP_BAR_HEIGHT + 5;
-        int leftWidth = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) - 15;
-        int leftHeight = this.height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 10;
-
-        previewPanel = new SpellPreviewPanel(leftX, leftY, leftWidth, leftHeight, viewModel);
+        // 使用已计算的容器坐标
+        previewPanel = new SpellPreviewPanel(leftX, leftY, leftW, leftH, viewModel);
         addRenderableWidget(previewPanel);
     }
 
     private void initRightPanel() {
-        int rightX = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) + 5;
-        int rightY = TOP_BAR_HEIGHT + 5;
-        int rightWidth = this.width - rightX - 10;
-
+        // 使用已计算的容器坐标
         int yOffset = 0;
+        int padding = 12;
 
         // Source区域
-        yOffset = createCardSection("起手式 (Source)", rightX, yOffset, rightWidth,
+        yOffset = createCardSection("起手式 (Source)", padding, yOffset, rightW,
             ComponentDataProvider.getSources(),
             viewModel.getSource() != null ? viewModel.getSource().id : null,
             this::onSourceSelected, true);
@@ -159,7 +175,7 @@ public class SpellEditorScreen extends Screen {
         yOffset += 15; // 区域间隙
 
         // Carrier区域
-        yOffset = createCardSection("载体 (Carrier)", rightX, yOffset, rightWidth,
+        yOffset = createCardSection("载体 (Carrier)", padding, yOffset, rightW,
             ComponentDataProvider.getCarriers(),
             viewModel.getCarrier() != null ? viewModel.getCarrier().id : null,
             this::onCarrierSelected, true);
@@ -167,7 +183,7 @@ public class SpellEditorScreen extends Screen {
         yOffset += 15;
 
         // Form区域
-        yOffset = createCardSection("术式 (Form)", rightX, yOffset, rightWidth,
+        yOffset = createCardSection("术式 (Form)", padding, yOffset, rightW,
             ComponentDataProvider.getForms(),
             viewModel.getForm() != null ? viewModel.getForm().id : null,
             this::onFormSelected, true);
@@ -175,25 +191,24 @@ public class SpellEditorScreen extends Screen {
         yOffset += 15;
 
         // Attributes区域（多选）
-        yOffset = createAttributesSection(rightX, yOffset, rightWidth);
+        yOffset = createAttributesSection(padding, yOffset, rightW);
 
         yOffset += 15;
 
         // Effects区域（多选）
-        yOffset = createEffectsSection(rightX, yOffset, rightWidth);
+        yOffset = createEffectsSection(padding, yOffset, rightW);
 
         // 计算内容总高度和最大滚动偏移
-        int rightHeight = this.height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 10;
         rightPanelContentHeight = yOffset;
-        maxScrollOffset = Math.max(0, rightPanelContentHeight - rightHeight);
+        maxScrollOffset = Math.max(0, rightPanelContentHeight - rightH);
     }
 
     private void initBottomBar() {
-        int bottomY = this.height - BOTTOM_BAR_HEIGHT + 5;
+        int bottomY = panelY + panelH - BOTTOM_BAR_HEIGHT + 5;
         int buttonWidth = 100;
         int spacing = 10;
         int totalWidth = buttonWidth * 3 + spacing * 2;
-        int startX = (this.width - totalWidth) / 2;
+        int startX = panelX + (panelW - totalWidth) / 2;
 
         // 导出JSON按钮
         Button exportBtn = Button.builder(Component.literal("§a导出JSON"), b -> exportDefinition())
@@ -213,6 +228,8 @@ public class SpellEditorScreen extends Screen {
 
     /**
      * 创建单个组件区域的卡片（单选）
+     * @param x 相对X坐标（相对于右栏起始）
+     * @param y 相对Y坐标（相对于内容起始）
      */
     private int createCardSection(String sectionTitle, int x, int y, int width,
                                   List<ComponentData> components, String selectedId,
@@ -224,9 +241,9 @@ public class SpellEditorScreen extends Screen {
         int titleHeight = 20;
         int cardStartY = y + titleHeight;
 
-        // 卡片布局：2列，间距12px（使用DaoTheme尺寸）
+        // 卡片布局：2列，计算卡片宽度确保两列对齐
         int spacing = DaoTheme.CARD_SPACING;
-        int cardWidth = DaoTheme.CARD_WIDTH;
+        int cardWidth = (width - spacing - x * 2) / 2; // 两列平分可用宽度
         int cardHeight = DaoTheme.CARD_HEIGHT;
 
         int col = 0;
@@ -236,18 +253,18 @@ public class SpellEditorScreen extends Screen {
         for (ComponentData data : components) {
             boolean isSelected = selectedId != null && selectedId.equals(data.getId());
 
-            // 考虑滚动偏移计算实际Y坐标
-            int rightY = TOP_BAR_HEIGHT + 5;
-            int actualY = currentY + rightY - scrollOffset;
+            // 计算实际屏幕坐标：右栏起始 + 相对位置 - 滚动偏移
+            int actualX = rightX + currentX;
+            int actualY = rightY + currentY - scrollOffset;
 
-            DaoCardWidget card = new DaoCardWidget(currentX, actualY, cardWidth, cardHeight, data);
+            DaoCardWidget card = new DaoCardWidget(actualX, actualY, cardWidth, cardHeight, data);
             card.setSelected(isSelected);
             card.setOnClickCallback(() -> {
                 onSelect.accept(data.getId());
                 refreshCards();
             });
 
-            addRenderableWidget(card);
+            // 不添加到 renderableWidget 列表，手动渲染
             allCards.add(card);
 
             col++;
@@ -280,9 +297,9 @@ public class SpellEditorScreen extends Screen {
         List<SpellEditorViewModel.SpellAttribute> allAttrs = SpellEditorViewModel.getAttributeOptions();
         List<SpellEditorViewModel.SpellAttribute> selectedAttrs = viewModel.getAttributes();
 
-        // 卡片布局：2列，间距12px（使用DaoTheme尺寸）
+        // 卡片布局：2列，计算卡片宽度确保两列对齐
         int spacing = DaoTheme.CARD_SPACING;
-        int cardWidth = DaoTheme.CARD_WIDTH;
+        int cardWidth = (width - spacing - x * 2) / 2; // 两列平分可用宽度
         int cardHeight = DaoTheme.CARD_HEIGHT;
 
         int col = 0;
@@ -296,10 +313,11 @@ public class SpellEditorScreen extends Screen {
             // 创建ComponentData
             ComponentData data = ComponentData.create(attr.id, attr.label, "◆", attr.description);
 
-            int rightY = TOP_BAR_HEIGHT + 5;
-            int actualY = currentY + rightY - scrollOffset;
+            // 计算实际屏幕坐标：右栏起始 + 相对位置 - 滚动偏移
+            int actualX = rightX + currentX;
+            int actualY = rightY + currentY - scrollOffset;
 
-            DaoCardWidget card = new DaoCardWidget(currentX, actualY, cardWidth, cardHeight, data);
+            DaoCardWidget card = new DaoCardWidget(actualX, actualY, cardWidth, cardHeight, data);
             card.setSelected(isSelected);
             // Note: Active state is managed by whether the card is added to the widget list
             // If canAdd is false and not selected, we still add it but don't respond to clicks
@@ -312,7 +330,7 @@ public class SpellEditorScreen extends Screen {
                 refreshCards();
             });
 
-            addRenderableWidget(card);
+            // 不添加到 renderableWidget 列表，手动渲染
             allCards.add(card);
 
             col++;
@@ -345,9 +363,9 @@ public class SpellEditorScreen extends Screen {
         List<SpellEditorViewModel.SpellEffect> allEffects = SpellEditorViewModel.getEffectOptions();
         List<SpellEditorViewModel.SpellEffect> selectedEffects = viewModel.getEffects();
 
-        // 卡片布局：2列，间距12px（使用DaoTheme尺寸）
+        // 卡片布局：2列，计算卡片宽度确保两列对齐
         int spacing = DaoTheme.CARD_SPACING;
-        int cardWidth = DaoTheme.CARD_WIDTH;
+        int cardWidth = (width - spacing - x * 2) / 2; // 两列平分可用宽度
         int cardHeight = DaoTheme.CARD_HEIGHT;
 
         int col = 0;
@@ -361,10 +379,11 @@ public class SpellEditorScreen extends Screen {
             // 创建ComponentData
             ComponentData data = ComponentData.create(effect.id, effect.label, "★", effect.description);
 
-            int rightY = TOP_BAR_HEIGHT + 5;
-            int actualY = currentY + rightY - scrollOffset;
+            // 计算实际屏幕坐标：右栏起始 + 相对位置 - 滚动偏移
+            int actualX = rightX + currentX;
+            int actualY = rightY + currentY - scrollOffset;
 
-            DaoCardWidget card = new DaoCardWidget(currentX, actualY, cardWidth, cardHeight, data);
+            DaoCardWidget card = new DaoCardWidget(actualX, actualY, cardWidth, cardHeight, data);
             card.setSelected(isSelected);
             // Note: Active state is managed by whether the card is added to the widget list
             // If canAdd is false and not selected, we still add it but don't respond to clicks
@@ -377,7 +396,7 @@ public class SpellEditorScreen extends Screen {
                 refreshCards();
             });
 
-            addRenderableWidget(card);
+            // 不添加到 renderableWidget 列表，手动渲染
             allCards.add(card);
 
             col++;
@@ -514,17 +533,38 @@ public class SpellEditorScreen extends Screen {
     // ==================== 滚动方法 ====================
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // 先检查是否点击了右栏卡片
+        for (DaoCardWidget card : allCards) {
+            if (card.isMouseOver(mouseX, mouseY)) {
+                card.onClick(mouseX, mouseY);
+                return true;
+            }
+        }
+
+        // 否则调用父类处理（处理其他 widget）
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        // 只在右侧面板区域响应滚动
-        int rightX = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) + 5;
-        if (mouseX >= rightX) {
+        // 只在右侧面板区域响应滚动（使用容器坐标）
+        if (mouseX >= rightX && mouseX <= rightX + rightW &&
+            mouseY >= rightY && mouseY <= rightY + rightH) {
             // 向上滚动为正值，向下滚动为负值
             // 每次滚动移动20像素
             int scrollAmount = (int)(delta * 20);
+            int oldScrollOffset = scrollOffset;
             scrollOffset = Math.max(0, Math.min(maxScrollOffset, scrollOffset - scrollAmount));
 
-            // 刷新卡片位置
-            refreshCards();
+            // 只更新卡片Y坐标，不重建卡片
+            int deltaY = oldScrollOffset - scrollOffset;
+            if (deltaY != 0) {
+                for (DaoCardWidget card : allCards) {
+                    card.setY(card.getY() + deltaY);
+                }
+            }
+
             return true;
         }
 
@@ -539,34 +579,32 @@ public class SpellEditorScreen extends Screen {
         DaoTheme.renderGradientBackground(guiGraphics, this.width, this.height);
 
         // 2. 渲染居中容器 + 双层边框 + 投影
-        // 注意：这个容器只是装饰性的，不影响实际组件位置
-        // 实际的左右面板仍然使用全屏布局
-        // int[] container = DaoTheme.renderCenteredContainer(guiGraphics, this.width, this.height);
-        // int panelX = container[0];
-        // int panelY = container[1];
-        // int panelW = container[2];
-        // int panelH = container[3];
+        DaoTheme.renderCenteredContainer(guiGraphics, this.width, this.height);
 
-        // 3. 计算右侧面板区域（保持原有布局）
-        int rightX = (int)(this.width * LEFT_PANEL_WIDTH_RATIO) + 5;
-        int rightY = TOP_BAR_HEIGHT + 5;
-        int rightWidth = this.width - rightX - 10;
-        int rightHeight = this.height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 10;
+        // 3. 渲染所有Widget（顶栏、左栏、底栏）- 不包括右栏卡片
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        // 4. 启用scissor裁剪（右侧滚动区域）
-        guiGraphics.enableScissor(rightX, rightY, rightX + rightWidth, rightY + rightHeight);
+        // 4. 启用scissor裁剪，手动渲染右栏内容
+        guiGraphics.enableScissor(rightX, rightY, rightX + rightW, rightY + rightH);
 
         // 5. 渲染区域标题
         for (SectionTitle section : sectionTitles) {
             int actualY = section.y + rightY - scrollOffset;
+            int actualX = section.x + rightX;
             // 只渲染可见的标题
-            if (actualY >= rightY - 20 && actualY <= rightY + rightHeight) {
-                guiGraphics.drawString(font, section.title, section.x, actualY, DaoTheme.TEXT_CINNABAR, false);
+            if (actualY >= rightY - 20 && actualY <= rightY + rightH) {
+                guiGraphics.drawString(font, section.title, actualX, actualY, DaoTheme.TEXT_CINNABAR, false);
             }
         }
 
-        // 6. 渲染所有Widget（包括卡片）
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        // 6. 手动渲染右栏卡片
+        for (DaoCardWidget card : allCards) {
+            // 检查卡片是否在可见区域
+            int cardY = card.getY();
+            if (cardY + card.getHeight() >= rightY && cardY <= rightY + rightH) {
+                card.renderCard(guiGraphics, mouseX, mouseY, partialTick);
+            }
+        }
 
         // 7. 禁用scissor裁剪
         guiGraphics.disableScissor();
@@ -574,7 +612,7 @@ public class SpellEditorScreen extends Screen {
         // 8. 渲染边缘渐隐遮罩（Fade Mask）- 制造"展开卷轴"效果
         boolean hasScroll = maxScrollOffset > 0;
         if (hasScroll) {
-            DaoTheme.renderFadeMask(guiGraphics, rightX, rightY, rightWidth, rightHeight,
+            DaoTheme.renderFadeMask(guiGraphics, rightX, rightY, rightW, rightH,
                 scrollOffset > 0,  // 上边缘：当可向上滚动时显示
                 scrollOffset < maxScrollOffset  // 下边缘：当可向下滚动时显示
             );

@@ -36,9 +36,24 @@ public class DaoCardWidget extends AbstractWidget {
     private long lastClickTime = 0;          // 上次点击时间
     private int clickX = 0, clickY = 0;      // 点击位置
 
+    // 文本换行缓存
+    private List<String> cachedWrappedText = null;
+    private int cachedWrapWidth = -1;
+
+    // Tooltip缓存
+    private int cachedTooltipWidth = -1;
+    private int cachedTooltipHeight = -1;
+
     public DaoCardWidget(int x, int y, int width, int height, ComponentData data) {
         super(x, y, width, height, Component.literal(data.getDisplayName()));
         this.data = data;
+    }
+
+    /**
+     * 公共渲染方法（供外部调用）
+     */
+    public void renderCard(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderWidget(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
@@ -67,7 +82,7 @@ public class DaoCardWidget extends AbstractWidget {
         // 1. 渲染轻阴影（偏移2px，40%透明黑）
         graphics.fill(renderX + 2, renderY + 2, renderX + renderW + 2, renderY + renderH + 2, DaoTheme.CARD_SHADOW);
 
-        // 2. 渲染背景（根据状态选择颜色）
+        // 2. 渲染背景（根据状态选择颜色，仅颜色Lerp）
         int bgColor;
         if (selected) {
             bgColor = DaoTheme.CARD_BG_SELECTED;
@@ -79,7 +94,7 @@ public class DaoCardWidget extends AbstractWidget {
         }
         graphics.fill(renderX, renderY, renderX + renderW, renderY + renderH, bgColor);
 
-        // 2. 渲染边框（Hover时颜色Lerp）
+        // 3. 渲染单层边框（Hover时颜色Lerp）
         int borderColor = DaoTheme.lerpColor(
             DaoTheme.BORDER_BROWN,
             DaoTheme.BORDER_CINNABAR,
@@ -89,23 +104,13 @@ public class DaoCardWidget extends AbstractWidget {
             borderColor = DaoTheme.BORDER_GOLD; // 选中时金色边框
         }
 
-        // 绘制边框（1.5px效果，绘制两层）
+        // 绘制单层边框（1px）
         graphics.fill(renderX, renderY, renderX + renderW, renderY + 1, borderColor); // 上
         graphics.fill(renderX, renderY + renderH - 1, renderX + renderW, renderY + renderH, borderColor); // 下
         graphics.fill(renderX, renderY, renderX + 1, renderY + renderH, borderColor); // 左
         graphics.fill(renderX + renderW - 1, renderY, renderX + renderW, renderY + renderH, borderColor); // 右
 
-        // Hover时加粗边框（内侧再加一层）
-        if (hoverProgress > 0.5f) {
-            int innerAlpha = (int)((hoverProgress - 0.5f) * 2 * 128);
-            int innerColor = (innerAlpha << 24) | (borderColor & 0x00FFFFFF);
-            graphics.fill(renderX + 1, renderY + 1, renderX + renderW - 1, renderY + 2, innerColor); // 上
-            graphics.fill(renderX + 1, renderY + renderH - 2, renderX + renderW - 1, renderY + renderH - 1, innerColor); // 下
-            graphics.fill(renderX + 1, renderY + 1, renderX + 2, renderY + renderH - 1, innerColor); // 左
-            graphics.fill(renderX + renderW - 2, renderY + 1, renderX + renderW - 1, renderY + renderH - 1, innerColor); // 右
-        }
-
-        // 3. 渲染图标（左上）
+        // 4. 渲染图标（左上）
         String icon = data.getIcon();
         if (icon != null && !icon.isEmpty()) {
             // Hover时图标变朱砂色
@@ -113,33 +118,34 @@ public class DaoCardWidget extends AbstractWidget {
             graphics.drawString(font, icon, renderX + 5, renderY + 5, iconColor, false);
         }
 
-        // 4. 渲染标题（粗体）
+        // 5. 渲染标题（粗体）
         String title = "§l" + data.getDisplayName();
         // Hover时标题变朱砂色
         int titleColor = (isHovered && hoverProgress > 0.5f) ? DaoTheme.TEXT_CINNABAR : DaoTheme.TEXT_PRIMARY;
         graphics.drawString(font, title, renderX + 20, renderY + 5, titleColor, false);
 
-        // 5. 渲染标题下方渐变线（1px，透明→墨色→透明）
-        DaoTheme.renderTitleDivider(graphics, renderX + 5, renderY + 18, renderW - 10);
+        // 6. 渲染标题下方简单线（1px）
+        graphics.fill(renderX + 5, renderY + 18, renderX + renderW - 5, renderY + 19, DaoTheme.DIVIDER_LINE);
 
-        // 6. 渲染描述（自动换行）
+        // 7. 渲染描述（自动换行，使用缓存）
         String shortDesc = data.getShortDesc();
         if (shortDesc != null && !shortDesc.isEmpty()) {
-            List<String> lines = wrapText(shortDesc, renderW - 10);
+            int wrapWidth = renderW - 10;
+            // 检查缓存是否有效
+            if (cachedWrappedText == null || cachedWrapWidth != wrapWidth) {
+                cachedWrappedText = wrapText(shortDesc, wrapWidth);
+                cachedWrapWidth = wrapWidth;
+            }
+
             int yOffset = renderY + 22; // 增加偏移，避开分割线
-            for (String line : lines) {
+            for (String line : cachedWrappedText) {
                 graphics.drawString(font, line, renderX + 5, yOffset, DaoTheme.TEXT_SECONDARY, false);
                 yOffset += 9;
                 if (yOffset - renderY > renderH - 5) break; // 防止溢出
             }
         }
 
-        // 6. 渲染墨迹扩散（点击时）
-        if (sealProgress > 0.0f && sealProgress < 1.0f) {
-            DaoTheme.renderInkSplash(graphics, sealProgress, clickX, clickY);
-        }
-
-        // 7. 渲染"已选"角标（右上角）
+        // 8. 渲染"已选"角标（右上角）
         if (selected && badgeProgress > 0.0f) {
             DaoTheme.renderSelectedBadge(graphics, renderX + renderW, renderY, badgeProgress);
         }
@@ -205,7 +211,7 @@ public class DaoCardWidget extends AbstractWidget {
     }
 
     /**
-     * 渲染定制Tooltip（新样式：深色背景+棕色边框）
+     * 渲染定制Tooltip（新样式：深色背景+棕色边框，缓存尺寸计算）
      */
     private void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         List<String> tooltipLines = data.getTooltipLines();
@@ -214,19 +220,25 @@ public class DaoCardWidget extends AbstractWidget {
             int screenWidth = mc.getWindow().getGuiScaledWidth();
             int screenHeight = mc.getWindow().getGuiScaledHeight();
 
-            // 计算tooltip尺寸（新规范：内边8-10px，行距34px）
-            int padding = 10;
-            int lineHeight = 14; // 保持原行距，34px可能太大
-            int maxWidth = 0;
-            for (String line : tooltipLines) {
-                int lineWidth = mc.font.width(line);
-                if (lineWidth > maxWidth) {
-                    maxWidth = lineWidth;
+            // 计算tooltip尺寸（使用缓存）
+            if (cachedTooltipWidth == -1 || cachedTooltipHeight == -1) {
+                int padding = 10;
+                int lineHeight = 14;
+                int maxWidth = 0;
+                for (String line : tooltipLines) {
+                    int lineWidth = mc.font.width(line);
+                    if (lineWidth > maxWidth) {
+                        maxWidth = lineWidth;
+                    }
                 }
+                cachedTooltipWidth = maxWidth + padding * 2;
+                cachedTooltipHeight = tooltipLines.size() * lineHeight + padding * 2;
             }
 
-            int tooltipWidth = maxWidth + padding * 2;
-            int tooltipHeight = tooltipLines.size() * lineHeight + padding * 2;
+            int tooltipWidth = cachedTooltipWidth;
+            int tooltipHeight = cachedTooltipHeight;
+            int padding = 10;
+            int lineHeight = 14;
 
             // 智能定位（鼠标+10,+10，溢出则向左/上偏移）
             int tooltipX = mouseX + 10;

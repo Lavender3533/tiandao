@@ -368,29 +368,11 @@ public final class DaoTheme {
      * @param height 屏幕高度
      */
     public static void renderGradientBackground(GuiGraphics graphics, int width, int height) {
-        // 1. 渲染径向渐变背景（中心亮 → 边缘暗）
-        // 使用fillGradient模拟，从中心向边缘过渡
-        int centerX = width / 2;
-        int centerY = height / 2;
+        // 1. 渲染简单渐变背景（中心亮 → 边缘暗）
+        graphics.fillGradient(0, 0, width, height, BG_PARCHMENT, BG_PARCHMENT_EDGE);
 
-        // 绘制多层矩形，从中心到边缘逐渐变暗
-        for (int i = 0; i < 10; i++) {
-            float progress = i / 10.0f;
-            int color = lerpColor(BG_PARCHMENT, BG_PARCHMENT_EDGE, progress);
-
-            int offsetX = (int)(centerX * progress);
-            int offsetY = (int)(centerY * progress);
-
-            // 绘制渐变矩形
-            graphics.fillGradient(
-                offsetX, offsetY,
-                width - offsetX, height - offsetY,
-                color, color
-            );
-        }
-
-        // 2. 渲染四角暗角效果（径向渐变黑，alpha 0→100）
-        renderVignetteCorners(graphics, width, height);
+        // 2. 暗角效果已禁用以优化性能
+        // renderVignetteCorners(graphics, width, height);
     }
 
     /**
@@ -458,7 +440,7 @@ public final class DaoTheme {
     }
 
     /**
-     * 渲染居中容器 + 双层边框 + 投影
+     * 渲染居中容器 + 单层细边框（优化版）
      * @param graphics GuiGraphics实例
      * @param screenWidth 屏幕宽度
      * @param screenHeight 屏幕高度
@@ -471,30 +453,14 @@ public final class DaoTheme {
         int panelY = 20;
         int panelH = screenHeight - 80;
 
-        // 1. 渲染投影（半透明黑，偏移Y+4）
-        graphics.fill(panelX + 2, panelY + 4, panelX + panelW + 2, panelY + panelH + 4, 0x60000000);
-
-        // 2. 渲染容器背景
+        // 1. 渲染容器背景
         graphics.fill(panelX, panelY, panelX + panelW, panelY + panelH, BG_CONTAINER);
 
-        // 3. 渲染外层边框（3px深褐色 #7a4b2a）
-        for (int i = 0; i < 3; i++) {
-            graphics.fill(panelX - i, panelY - i, panelX + panelW + i, panelY - i + 1, BORDER_BROWN); // 上
-            graphics.fill(panelX - i, panelY + panelH + i - 1, panelX + panelW + i, panelY + panelH + i, BORDER_BROWN); // 下
-            graphics.fill(panelX - i, panelY - i, panelX - i + 1, panelY + panelH + i, BORDER_BROWN); // 左
-            graphics.fill(panelX + panelW + i - 1, panelY - i, panelX + panelW + i, panelY + panelH + i, BORDER_BROWN); // 右
-        }
-
-        // 4. 渲染内层边框（1px金色 #d4af37，内缩2px）
-        int innerOffset = 2;
-        graphics.fill(panelX + innerOffset, panelY + innerOffset,
-                     panelX + panelW - innerOffset, panelY + innerOffset + 1, BORDER_INNER_GOLD); // 上
-        graphics.fill(panelX + innerOffset, panelY + panelH - innerOffset - 1,
-                     panelX + panelW - innerOffset, panelY + panelH - innerOffset, BORDER_INNER_GOLD); // 下
-        graphics.fill(panelX + innerOffset, panelY + innerOffset,
-                     panelX + innerOffset + 1, panelY + panelH - innerOffset, BORDER_INNER_GOLD); // 左
-        graphics.fill(panelX + panelW - innerOffset - 1, panelY + innerOffset,
-                     panelX + panelW - innerOffset, panelY + panelH - innerOffset, BORDER_INNER_GOLD); // 右
+        // 2. 渲染单层细边框（1px深褐色）
+        graphics.fill(panelX, panelY, panelX + panelW, panelY + 1, BORDER_BROWN); // 上
+        graphics.fill(panelX, panelY + panelH - 1, panelX + panelW, panelY + panelH, BORDER_BROWN); // 下
+        graphics.fill(panelX, panelY, panelX + 1, panelY + panelH, BORDER_BROWN); // 左
+        graphics.fill(panelX + panelW - 1, panelY, panelX + panelW, panelY + panelH, BORDER_BROWN); // 右
 
         return new int[]{panelX, panelY, panelW, panelH};
     }
