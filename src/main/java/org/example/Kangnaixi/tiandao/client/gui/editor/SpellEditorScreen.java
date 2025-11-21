@@ -9,6 +9,9 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.client.gui.editor.widget.ComponentCard;
+import org.example.Kangnaixi.tiandao.client.gui.editor.widget.SpellPreviewPanel;
+import org.example.Kangnaixi.tiandao.client.gui.editor.widget.StepNavigationBar;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorLearnPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorSavePacket;
@@ -42,6 +45,13 @@ public class SpellEditorScreen extends Screen {
     private List<net.minecraft.client.gui.components.Renderable> attrTabWidgets = new ArrayList<>();
     private List<net.minecraft.client.gui.components.Renderable> effectTabWidgets = new ArrayList<>();
     private List<net.minecraft.client.gui.components.Renderable> finalTabWidgets = new ArrayList<>();
+
+    // 新版Widget组件（用于骨架Tab）
+    private StepNavigationBar stepNavigationBar;
+    private SpellPreviewPanel previewPanel;
+    private List<ComponentCard> sourceCards = new ArrayList<>();
+    private List<ComponentCard> carrierCards = new ArrayList<>();
+    private List<ComponentCard> formCards = new ArrayList<>();
 
     // 命名Tab输入框
     private EditBox nameField;
@@ -103,6 +113,11 @@ public class SpellEditorScreen extends Screen {
             case 3 -> initFinalTab();
         }
 
+        // 更新StepNavigationBar的当前步骤（如果存在）
+        if (stepNavigationBar != null) {
+            stepNavigationBar.setCurrentStep(currentTab);
+        }
+
         updateTabButtonStyles();
         updatePreview();
     }
@@ -123,88 +138,151 @@ public class SpellEditorScreen extends Screen {
     // ==================== Tab 0: 骨架选择 ====================
 
     /**
-     * 初始化"骨架"Tab
-     * 布局：左中右三列，分别是施法源、载体、生效方式
+     * 初始化"骨架"Tab - 新版Widget布局
+     * 布局：顶部步骤导航，左侧预览面板，右侧组件卡片列表
      */
     private void initCoreTab() {
-        int contentY = 50;
-        int columnWidth = (this.width - 80) / 3;
-        int leftX = 20;
-        int midX = leftX + columnWidth + 20;
-        int rightX = midX + columnWidth + 20;
+        // 清空旧的卡片列表
+        sourceCards.clear();
+        carrierCards.clear();
+        formCards.clear();
 
-        // 左列：起手式
-        renderCoreColumn("§6§l起手式", leftX, contentY, columnWidth,
-            SpellEditorViewModel.getSourceOptions(),
-            viewModel.getSource(),
-            this::onSourceSelected);
+        // 1. 顶部步骤导航栏
+        int navHeight = 50;
+        stepNavigationBar = new StepNavigationBar(
+            20, 50, this.width - 40, navHeight,
+            viewModel, currentTab
+        );
+        stepNavigationBar.setOnStepChange(this::switchToTab);
+        addRenderableWidget(stepNavigationBar);
+        coreTabWidgets.add(stepNavigationBar);
 
-        // 中列：载体
-        renderCoreColumn("§6§l载体", midX, contentY, columnWidth,
-            SpellEditorViewModel.getCarrierOptions(),
-            viewModel.getCarrier(),
-            this::onCarrierSelected);
+        // 2. 内容区域布局
+        int contentStartY = 50 + navHeight + 10;
+        int contentHeight = this.height - contentStartY - 70; // 留出底部按钮空间
 
-        // 右列：术式
-        renderCoreColumn("§6§l术式", rightX, contentY, columnWidth,
-            SpellEditorViewModel.getFormOptions(),
-            viewModel.getForm(),
-            this::onFormSelected);
+        // 左侧预览面板（40%宽度）
+        int previewWidth = (int)((this.width - 60) * 0.4);
+        previewPanel = new SpellPreviewPanel(
+            20, contentStartY, previewWidth, contentHeight,
+            viewModel
+        );
+        addRenderableWidget(previewPanel);
+        coreTabWidgets.add(previewPanel);
 
-        // 底部预览区域
-        renderCorePreview();
+        // 右侧组件选择区域（60%宽度）
+        int rightX = 20 + previewWidth + 20;
+        int rightWidth = this.width - rightX - 20;
+
+        // 右侧使用三段式布局：起手式、载体、术式
+        int sectionHeight = (contentHeight - 40) / 3;
+        int yOffset = contentStartY;
+
+        // 起手式部分
+        yOffset = renderComponentSection("起手式", rightX, yOffset, rightWidth, sectionHeight,
+            ComponentDataProvider.getSources(),
+            viewModel.getSource() != null ? viewModel.getSource().id : null,
+            this::onSourceSelected,
+            sourceCards);
+
+        yOffset += 10; // 间隙
+
+        // 载体部分
+        yOffset = renderComponentSection("载体", rightX, yOffset, rightWidth, sectionHeight,
+            ComponentDataProvider.getCarriers(),
+            viewModel.getCarrier() != null ? viewModel.getCarrier().id : null,
+            this::onCarrierSelected,
+            carrierCards);
+
+        yOffset += 10; // 间隙
+
+        // 术式部分
+        renderComponentSection("术式", rightX, yOffset, rightWidth, sectionHeight,
+            ComponentDataProvider.getForms(),
+            viewModel.getForm() != null ? viewModel.getForm().id : null,
+            this::onFormSelected,
+            formCards);
 
         // 底部导航按钮
         addNavigationButtons(false, true);
     }
 
     /**
-     * 渲染单列骨架选项
+     * 渲染单个组件选择区域（使用ComponentCard）
+     * @return 下一个区域的Y坐标
      */
-    private void renderCoreColumn(String title, int x, int y, int width,
-                                 List<SpellEditorViewModel.SpellComponent> options,
-                                 SpellEditorViewModel.SpellComponent current,
-                                 java.util.function.Consumer<String> onSelect) {
-        int buttonY = y + 20;
+    private int renderComponentSection(String sectionTitle, int x, int y, int width, int height,
+                                      List<ComponentData> components, String selectedId,
+                                      java.util.function.Consumer<String> onSelect,
+                                      List<ComponentCard> cardList) {
+        // 渲染区域标题（在render方法中绘制，这里只记录位置）
+        int titleHeight = 15;
+        int cardStartY = y + titleHeight;
 
-        for (SpellEditorViewModel.SpellComponent option : options) {
-            boolean isSelected = current != null && current.id.equals(option.id);
-            String prefix = isSelected ? "§a√" : "§7";
+        // 卡片布局：2列
+        int cardWidth = (width - 15) / 2; // 减去中间间隙
+        int cardHeight = 80;
+        int cardsPerRow = 2;
 
-            Button btn = Button.builder(
-                Component.literal(prefix + option.label),
-                b -> {
-                    onSelect.accept(option.id);
-                    switchToTab(0); // 刷新当前Tab
-                }
-            ).bounds(x, buttonY, width, BUTTON_HEIGHT).build();
+        int currentX = x;
+        int currentY = cardStartY;
+        int col = 0;
 
-            addRenderableWidget(btn);
-            coreTabWidgets.add(btn);
-            buttonY += BUTTON_HEIGHT + 5;
+        for (ComponentData data : components) {
+            boolean isSelected = selectedId != null && selectedId.equals(data.getId());
+
+            ComponentCard card = new ComponentCard(
+                currentX, currentY, cardWidth, cardHeight,
+                data
+            );
+            card.setSelected(isSelected);
+
+            card.setOnClickCallback(() -> {
+                onSelect.accept(data.getId());
+                // 刷新当前Tab以更新选中状态
+                switchToTab(0);
+            });
+
+            addRenderableWidget(card);
+            coreTabWidgets.add(card);
+            cardList.add(card);
+
+            // 计算下一个卡片位置
+            col++;
+            if (col >= cardsPerRow) {
+                col = 0;
+                currentX = x;
+                currentY += cardHeight + 5;
+            } else {
+                currentX += cardWidth + 5;
+            }
         }
+
+        return y + height;
     }
 
     private void onSourceSelected(String id) {
         viewModel.setSource(id);
         updatePreview();
+        if (previewPanel != null) {
+            previewPanel.updatePreview();
+        }
     }
 
     private void onCarrierSelected(String id) {
         viewModel.setCarrier(id);
         updatePreview();
+        if (previewPanel != null) {
+            previewPanel.updatePreview();
+        }
     }
 
     private void onFormSelected(String id) {
         viewModel.setForm(id);
         updatePreview();
-    }
-
-    /**
-     * 渲染骨架Tab底部预览
-     */
-    private void renderCorePreview() {
-        // 在render()方法中绘制，此处仅占位
+        if (previewPanel != null) {
+            previewPanel.updatePreview();
+        }
     }
 
     // ==================== Tab 1: 属性选择 ====================
@@ -548,6 +626,12 @@ public class SpellEditorScreen extends Screen {
      */
     private void clearContentWidgets() {
         spiritCostLabel = null;
+        stepNavigationBar = null;
+        previewPanel = null;
+        sourceCards.clear();
+        carrierCards.clear();
+        formCards.clear();
+
         // 移除所有Tab的组件（不仅仅是当前Tab）
         List<List<net.minecraft.client.gui.components.Renderable>> allTabWidgets = List.of(
             coreTabWidgets, attrTabWidgets, effectTabWidgets, finalTabWidgets
@@ -686,32 +770,31 @@ public class SpellEditorScreen extends Screen {
     }
 
     /**
-     * 渲染骨架Tab的文本内容
+     * 渲染骨架Tab的文本内容 - 新版布局
      */
     private void renderCoreTabContent(net.minecraft.client.gui.GuiGraphics guiGraphics) {
-        int contentY = 50;
-        int columnWidth = (this.width - 80) / 3;
-        int leftX = 20;
-        int midX = leftX + columnWidth + 20;
-        int rightX = midX + columnWidth + 20;
+        // 新版布局中，Widget自己负责渲染，这里只需要渲染区域标题
 
-        // 列标题
-        guiGraphics.drawString(font, "§6§l起手式", leftX, contentY, 0xFFDD44);
-        guiGraphics.drawString(font, "§6§l载体", midX, contentY, 0xFFDD44);
-        guiGraphics.drawString(font, "§6§l术式", rightX, contentY, 0xFFDD44);
+        int navHeight = 50;
+        int contentStartY = 50 + navHeight + 10;
+        int contentHeight = this.height - contentStartY - 70;
 
-        // 底部预览
-        int previewY = this.height - 120;
-        guiGraphics.drawString(font, "§7§l当前预览:", 20, previewY, 0xCCCCCC);
-        previewY += 12;
+        int previewWidth = (int)((this.width - 60) * 0.4);
+        int rightX = 20 + previewWidth + 20;
 
-        String sourceLabel = viewModel.getSource() != null ? viewModel.getSource().label : "未选择";
-        String carrierLabel = viewModel.getCarrier() != null ? viewModel.getCarrier().label : "未选择";
-        String formLabel = viewModel.getForm() != null ? viewModel.getForm().label : "未选择";
+        int sectionHeight = (contentHeight - 40) / 3;
+        int yOffset = contentStartY;
 
-        guiGraphics.drawString(font, "§e起手式: §7" + sourceLabel, 20, previewY, 0xFFFFFF);
-        guiGraphics.drawString(font, "§e载体: §7" + carrierLabel, 20, previewY + 11, 0xFFFFFF);
-        guiGraphics.drawString(font, "§e术式: §7" + formLabel, 20, previewY + 22, 0xFFFFFF);
+        // 起手式标题
+        guiGraphics.drawString(font, "§6§l起手式 (Source)", rightX, yOffset, SpellEditorColors.TEXT_GOLD, false);
+        yOffset += sectionHeight + 10;
+
+        // 载体标题
+        guiGraphics.drawString(font, "§6§l载体 (Carrier)", rightX, yOffset, SpellEditorColors.TEXT_GOLD, false);
+        yOffset += sectionHeight + 10;
+
+        // 术式标题
+        guiGraphics.drawString(font, "§6§l术式 (Form)", rightX, yOffset, SpellEditorColors.TEXT_GOLD, false);
     }
 
     /**
