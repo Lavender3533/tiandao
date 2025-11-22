@@ -2,10 +2,8 @@ package org.example.Kangnaixi.tiandao.client.gui.editor;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.example.Kangnaixi.tiandao.Tiandao;
@@ -14,7 +12,6 @@ import org.example.Kangnaixi.tiandao.client.gui.editor.widget.SpellPreviewPanel;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorLearnPacket;
 import org.example.Kangnaixi.tiandao.network.packet.SpellEditorSavePacket;
-import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +25,8 @@ public class SpellEditorScreen extends Screen {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final int TOP_BAR_HEIGHT = 40;
-    private static final int BOTTOM_BAR_HEIGHT = 30;
-    private static final float LEFT_PANEL_WIDTH_RATIO = 0.3f;
+    private static final int BOTTOM_BAR_HEIGHT = 24; // 从30降到24
+    private static final float LEFT_PANEL_WIDTH_RATIO = 0.26f; // 从0.3改为0.26
 
     private final SpellEditorViewModel viewModel;
 
@@ -81,20 +78,21 @@ public class SpellEditorScreen extends Screen {
         sectionTitles.clear();
         scrollOffset = 0;
 
-        // 计算居中容器坐标
-        panelW = Math.min(this.width - 40, 1000);
+        // 计算居中容器坐标（与DaoTheme.renderCenteredContainer一致）
+        // 布局：80%~85%屏宽，上方24px，下方64px，最大1100px
+        panelW = Math.min((int)(this.width * 0.85), 1100);
         panelX = (this.width - panelW) / 2;
-        panelY = 20;
-        panelH = this.height - 80;
+        panelY = 24;
+        panelH = this.height - 88; // 上24px + 下64px = 88px
 
-        // 基于容器计算左右栏坐标
+        // 基于容器计算左右栏坐标（左26%，右74%）
         leftX = panelX + 12;
-        leftW = (int)(panelW * 0.3f) - 16;
+        leftW = (int)(panelW * LEFT_PANEL_WIDTH_RATIO) - 12;
         leftY = panelY + TOP_BAR_HEIGHT + 8;
         leftH = panelH - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 16;
 
         rightX = leftX + leftW + 12;
-        rightW = panelW - leftW - 24;
+        rightW = panelW - leftW - 36; // 调整间距
         rightY = panelY + TOP_BAR_HEIGHT + 8;
         rightH = panelH - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 16;
 
@@ -125,9 +123,10 @@ public class SpellEditorScreen extends Screen {
         });
         addRenderableWidget(nameField);
 
-        // ID输入（容器右侧）
+        // ID输入（容器右侧，留出更多空间给生成按钮）
         int idWidth = 120;
-        int idX = panelX + panelW - idWidth - 80;
+        int buttonWidth = 60; // 从50增加到60，确保"生成"两字能完整显示
+        int idX = panelX + panelW - idWidth - buttonWidth - 20; // 调整位置，确保按钮在容器内
         idField = new EditBox(font, idX, topY + 10, idWidth, 20, Component.literal("术法ID"));
         String currentId = viewModel.getSpellIdRaw();
         idField.setValue(currentId != null ? currentId : "");
@@ -142,16 +141,18 @@ public class SpellEditorScreen extends Screen {
         });
         addRenderableWidget(idField);
 
-        // 生成ID按钮
+        // 生成ID按钮（增加宽度，确保可点击）
         generateIdButton = Button.builder(Component.literal("生成"), b -> {
             String newId = SpellEditorViewModel.generateUniqueId();
+            Tiandao.LOGGER.info("生成随机ID: {}", newId); // 添加日志
             idField.setValue(newId);
             try {
                 viewModel.setSpellId(newId);
+                Tiandao.LOGGER.info("ID已设置到ViewModel: {}", newId);
             } catch (IllegalArgumentException ex) {
                 Tiandao.LOGGER.error("生成的ID无效: {}", ex.getMessage());
             }
-        }).bounds(idX + idWidth + 5, topY + 10, 50, 20).build();
+        }).bounds(idX + idWidth + 8, topY + 10, buttonWidth, 20).build();
         addRenderableWidget(generateIdButton);
     }
 
@@ -241,13 +242,18 @@ public class SpellEditorScreen extends Screen {
         int titleHeight = 20;
         int cardStartY = y + titleHeight;
 
-        // 卡片布局：2列，计算卡片宽度确保两列对齐
+        // 卡片布局：2列，固定宽度320px，居中对齐
         int spacing = DaoTheme.CARD_SPACING;
-        int cardWidth = (width - spacing - x * 2) / 2; // 两列平分可用宽度
+        int cardWidth = DaoTheme.CARD_WIDTH; // 固定320px
         int cardHeight = DaoTheme.CARD_HEIGHT;
 
+        // 计算两列总宽度，居中对齐
+        int totalCardsWidth = cardWidth * 2 + spacing;
+        int startX = (width - totalCardsWidth) / 2; // 居中起始位置
+        if (startX < x) startX = x; // 确保不小于最小边距
+
         int col = 0;
-        int currentX = x;
+        int currentX = startX; // 使用居中后的起始位置
         int currentY = cardStartY;
 
         for (ComponentData data : components) {
@@ -270,7 +276,7 @@ public class SpellEditorScreen extends Screen {
             col++;
             if (col >= 2) { // 2列布局
                 col = 0;
-                currentX = x;
+                currentX = startX; // 重置到居中起始位置
                 currentY += cardHeight + spacing;
             } else {
                 currentX += cardWidth + spacing;
@@ -297,13 +303,18 @@ public class SpellEditorScreen extends Screen {
         List<SpellEditorViewModel.SpellAttribute> allAttrs = SpellEditorViewModel.getAttributeOptions();
         List<SpellEditorViewModel.SpellAttribute> selectedAttrs = viewModel.getAttributes();
 
-        // 卡片布局：2列，计算卡片宽度确保两列对齐
+        // 卡片布局：2列，固定宽度320px，居中对齐
         int spacing = DaoTheme.CARD_SPACING;
-        int cardWidth = (width - spacing - x * 2) / 2; // 两列平分可用宽度
+        int cardWidth = DaoTheme.CARD_WIDTH; // 固定320px
         int cardHeight = DaoTheme.CARD_HEIGHT;
 
+        // 计算两列总宽度，居中对齐
+        int totalCardsWidth = cardWidth * 2 + spacing;
+        int startX = (width - totalCardsWidth) / 2;
+        if (startX < x) startX = x;
+
         int col = 0;
-        int currentX = x;
+        int currentX = startX;
         int currentY = cardStartY;
 
         for (SpellEditorViewModel.SpellAttribute attr : allAttrs) {
@@ -319,8 +330,6 @@ public class SpellEditorScreen extends Screen {
 
             DaoCardWidget card = new DaoCardWidget(actualX, actualY, cardWidth, cardHeight, data);
             card.setSelected(isSelected);
-            // Note: Active state is managed by whether the card is added to the widget list
-            // If canAdd is false and not selected, we still add it but don't respond to clicks
             card.setOnClickCallback(() -> {
                 if (isSelected) {
                     viewModel.removeAttribute(attr.id);
@@ -336,7 +345,7 @@ public class SpellEditorScreen extends Screen {
             col++;
             if (col >= 2) { // 2列布局
                 col = 0;
-                currentX = x;
+                currentX = startX;
                 currentY += cardHeight + spacing;
             } else {
                 currentX += cardWidth + spacing;
@@ -363,13 +372,18 @@ public class SpellEditorScreen extends Screen {
         List<SpellEditorViewModel.SpellEffect> allEffects = SpellEditorViewModel.getEffectOptions();
         List<SpellEditorViewModel.SpellEffect> selectedEffects = viewModel.getEffects();
 
-        // 卡片布局：2列，计算卡片宽度确保两列对齐
+        // 卡片布局：2列，固定宽度320px，居中对齐
         int spacing = DaoTheme.CARD_SPACING;
-        int cardWidth = (width - spacing - x * 2) / 2; // 两列平分可用宽度
+        int cardWidth = DaoTheme.CARD_WIDTH; // 固定320px
         int cardHeight = DaoTheme.CARD_HEIGHT;
 
+        // 计算两列总宽度，居中对齐
+        int totalCardsWidth = cardWidth * 2 + spacing;
+        int startX = (width - totalCardsWidth) / 2;
+        if (startX < x) startX = x;
+
         int col = 0;
-        int currentX = x;
+        int currentX = startX;
         int currentY = cardStartY;
 
         for (SpellEditorViewModel.SpellEffect effect : allEffects) {
@@ -385,8 +399,6 @@ public class SpellEditorScreen extends Screen {
 
             DaoCardWidget card = new DaoCardWidget(actualX, actualY, cardWidth, cardHeight, data);
             card.setSelected(isSelected);
-            // Note: Active state is managed by whether the card is added to the widget list
-            // If canAdd is false and not selected, we still add it but don't respond to clicks
             card.setOnClickCallback(() -> {
                 if (isSelected) {
                     viewModel.removeEffect(effect.id);
@@ -402,7 +414,7 @@ public class SpellEditorScreen extends Screen {
             col++;
             if (col >= 2) { // 2列布局
                 col = 0;
-                currentX = x;
+                currentX = startX;
                 currentY += cardHeight + spacing;
             } else {
                 currentX += cardWidth + spacing;

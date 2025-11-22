@@ -124,8 +124,9 @@ public class DaoCardWidget extends AbstractWidget {
         int titleColor = (isHovered && hoverProgress > 0.5f) ? DaoTheme.TEXT_CINNABAR : DaoTheme.TEXT_PRIMARY;
         graphics.drawString(font, title, renderX + 20, renderY + 5, titleColor, false);
 
-        // 6. 渲染标题下方简单线（1px）
-        graphics.fill(renderX + 5, renderY + 18, renderX + renderW - 5, renderY + 19, DaoTheme.DIVIDER_LINE);
+        // 6. 渲染标题下方细分割线（1px，30%透明度）
+        int dividerColor = 0x4D000000 | (DaoTheme.DIVIDER_LINE & 0x00FFFFFF); // 30% alpha
+        graphics.fill(renderX + 5, renderY + 18, renderX + renderW - 5, renderY + 19, dividerColor);
 
         // 7. 渲染描述（自动换行，使用缓存）
         String shortDesc = data.getShortDesc();
