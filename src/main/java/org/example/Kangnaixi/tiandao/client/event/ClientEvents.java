@@ -9,6 +9,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationHUD;
+import org.example.Kangnaixi.tiandao.client.mindsea.MindSeaHoloOverlay;
 
 /**
  * 客户端事件处理器
@@ -50,6 +51,13 @@ public class ClientEvents {
                 VanillaGuiOverlay.HOTBAR.id(),
                 "cultivation_hud",
                 CULTIVATION_HUD_OVERLAY
+            );
+
+            // 注册识海内视模式背景遮罩（在所有GUI之下）
+            event.registerBelow(
+                VanillaGuiOverlay.CROSSHAIR.id(),
+                "mindsea_holo_overlay",
+                new MindSeaHoloOverlay()
             );
 
             // 新的术法快捷栏HUD由 SpellHotbarOverlay 自己注册

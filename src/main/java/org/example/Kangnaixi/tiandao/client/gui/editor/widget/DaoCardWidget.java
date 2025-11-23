@@ -82,35 +82,22 @@ public class DaoCardWidget extends AbstractWidget {
         // 1. 渲染轻阴影（偏移2px，40%透明黑）
         graphics.fill(renderX + 2, renderY + 2, renderX + renderW + 2, renderY + renderH + 2, DaoTheme.CARD_SHADOW);
 
-        // 2. 渲染背景（根据状态选择颜色，仅颜色Lerp）
-        int bgColor;
+        // 2. 渲染卡片背景（使用九宫格纹理 card_light.png）
+        DaoTheme.renderNineSlice(graphics, DaoTheme.CARD_LIGHT, renderX, renderY, renderW, renderH, 8);
+
+        // 3. Hover/Selected 状态叠加颜色（使用半透明fill）
         if (selected) {
-            bgColor = DaoTheme.CARD_BG_SELECTED;
+            // 选中时叠加金色半透明层
+            int overlayColor = 0x40FFD700; // 25% Alpha 金色
+            graphics.fill(renderX, renderY, renderX + renderW, renderY + renderH, overlayColor);
         } else if (isHovered && hoverProgress > 0.3f) {
-            // Hover时背景提亮10-15%
-            bgColor = DaoTheme.lerpColor(DaoTheme.CARD_BG, DaoTheme.CARD_BG_HOVER, hoverProgress);
-        } else {
-            bgColor = DaoTheme.CARD_BG; // 默认羊皮纸色
-        }
-        graphics.fill(renderX, renderY, renderX + renderW, renderY + renderH, bgColor);
-
-        // 3. 渲染单层边框（Hover时颜色Lerp）
-        int borderColor = DaoTheme.lerpColor(
-            DaoTheme.BORDER_BROWN,
-            DaoTheme.BORDER_CINNABAR,
-            hoverProgress
-        );
-        if (selected) {
-            borderColor = DaoTheme.BORDER_GOLD; // 选中时金色边框
+            // Hover时叠加朱砂半透明层
+            int alpha = (int)(hoverProgress * 64); // 最大25%透明度
+            int overlayColor = (alpha << 24) | 0x00C0392B; // 朱砂色
+            graphics.fill(renderX, renderY, renderX + renderW, renderY + renderH, overlayColor);
         }
 
-        // 绘制单层边框（1px）
-        graphics.fill(renderX, renderY, renderX + renderW, renderY + 1, borderColor); // 上
-        graphics.fill(renderX, renderY + renderH - 1, renderX + renderW, renderY + renderH, borderColor); // 下
-        graphics.fill(renderX, renderY, renderX + 1, renderY + renderH, borderColor); // 左
-        graphics.fill(renderX + renderW - 1, renderY, renderX + renderW, renderY + renderH, borderColor); // 右
-
-        // 4. 渲染图标（左上）
+        // 渲染图标（左上）
         String icon = data.getIcon();
         if (icon != null && !icon.isEmpty()) {
             // Hover时图标变朱砂色
@@ -118,17 +105,17 @@ public class DaoCardWidget extends AbstractWidget {
             graphics.drawString(font, icon, renderX + 5, renderY + 5, iconColor, false);
         }
 
-        // 5. 渲染标题（粗体）
+        // 渲染标题（粗体）
         String title = "§l" + data.getDisplayName();
         // Hover时标题变朱砂色
         int titleColor = (isHovered && hoverProgress > 0.5f) ? DaoTheme.TEXT_CINNABAR : DaoTheme.TEXT_PRIMARY;
         graphics.drawString(font, title, renderX + 20, renderY + 5, titleColor, false);
 
-        // 6. 渲染标题下方细分割线（1px，30%透明度）
+        // 渲染标题下方细分割线（1px，30%透明度）
         int dividerColor = 0x4D000000 | (DaoTheme.DIVIDER_LINE & 0x00FFFFFF); // 30% alpha
         graphics.fill(renderX + 5, renderY + 18, renderX + renderW - 5, renderY + 19, dividerColor);
 
-        // 7. 渲染描述（自动换行，使用缓存）
+        // 渲染描述（自动换行，使用缓存）
         String shortDesc = data.getShortDesc();
         if (shortDesc != null && !shortDesc.isEmpty()) {
             int wrapWidth = renderW - 10;
@@ -146,12 +133,12 @@ public class DaoCardWidget extends AbstractWidget {
             }
         }
 
-        // 8. 渲染"已选"角标（右上角）
+        // 渲染"已选"角标（右上角）
         if (selected && badgeProgress > 0.0f) {
             DaoTheme.renderSelectedBadge(graphics, renderX + renderW, renderY, badgeProgress);
         }
 
-        // 8. Hover时渲染Tooltip
+        // Hover时渲染Tooltip
         if (isHovered && !data.getTooltipLines().isEmpty()) {
             renderTooltip(graphics, mouseX, mouseY);
         }

@@ -79,11 +79,11 @@ public class SpellEditorScreen extends Screen {
         scrollOffset = 0;
 
         // 计算居中容器坐标（与DaoTheme.renderCenteredContainer一致）
-        // 布局：80%~85%屏宽，上方24px，下方64px，最大1100px
+        // 布局：80%~85%屏宽，上方24px，下方72px，最大1100px
         panelW = Math.min((int)(this.width * 0.85), 1100);
         panelX = (this.width - panelW) / 2;
         panelY = 24;
-        panelH = this.height - 88; // 上24px + 下64px = 88px
+        panelH = this.height - 96; // 上24px + 下72px = 96px
 
         // 基于容器计算左右栏坐标（左26%，右74%）
         leftX = panelX + 12;
@@ -587,10 +587,10 @@ public class SpellEditorScreen extends Screen {
 
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 1. 渲染背景渐变（中心亮 → 边缘暗）+ 暗角效果
-        DaoTheme.renderGradientBackground(guiGraphics, this.width, this.height);
+        // 1. 渲染全屏背景纹理（bg_base.png）
+        guiGraphics.blit(DaoTheme.BG_BASE, 0, 0, 0, 0, this.width, this.height, this.width, this.height);
 
-        // 2. 渲染居中容器 + 双层边框 + 投影
+        // 2. 渲染居中容器（九宫格纹理 container_frame.png）
         DaoTheme.renderCenteredContainer(guiGraphics, this.width, this.height);
 
         // 3. 渲染所有Widget（顶栏、左栏、底栏）- 不包括右栏卡片

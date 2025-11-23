@@ -3,6 +3,7 @@ package org.example.Kangnaixi.tiandao.client;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.event.RenderEventHandler;
+import org.example.Kangnaixi.tiandao.client.mindsea.MindSeaHoloEvents;
 
 /**
  * 客户端设置类
@@ -26,6 +27,14 @@ public class ClientSetup {
             Tiandao.LOGGER.info("RenderEventHandler 类已加载，事件监听器已注册");
         } catch (ClassNotFoundException e) {
             Tiandao.LOGGER.error("无法加载 RenderEventHandler 类", e);
+        }
+
+        // 强制加载 MindSeaHoloEvents 类，确保识海全息事件监听器已注册
+        try {
+            Class.forName(MindSeaHoloEvents.class.getName());
+            Tiandao.LOGGER.info("MindSeaHoloEvents 类已加载，识海全息事件监听器已注册");
+        } catch (ClassNotFoundException e) {
+            Tiandao.LOGGER.error("无法加载 MindSeaHoloEvents 类", e);
         }
     }
 }

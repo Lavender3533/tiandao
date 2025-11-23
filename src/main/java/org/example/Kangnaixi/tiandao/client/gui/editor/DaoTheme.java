@@ -2,6 +2,8 @@ package org.example.Kangnaixi.tiandao.client.gui.editor;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+import org.example.Kangnaixi.tiandao.Tiandao;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -13,6 +15,20 @@ import org.lwjgl.opengl.GL11;
  * - 整体留白，符合古籍排版美学
  */
 public final class DaoTheme {
+
+    // ==================== 纹理资源 ====================
+
+    /** 全屏背景纹理 */
+    public static final ResourceLocation BG_BASE = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/bg_base.png");
+
+    /** 容器边框纹理（九宫格） */
+    public static final ResourceLocation CONTAINER_FRAME = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/container_frame.png");
+
+    /** 浅色卡片纹理（九宫格） */
+    public static final ResourceLocation CARD_LIGHT = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/card_light.png");
+
+    /** 深色卡片纹理（九宫格，用于按钮） */
+    public static final ResourceLocation CARD_DARK = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/card_dark.png");
 
     // ==================== 基础色板 ====================
 
@@ -440,41 +456,77 @@ public final class DaoTheme {
     }
 
     /**
-     * 渲染居中容器 + 细双层边框 + 轻微阴影（现代+古风混合）
+     * 渲染九宫格纹理（NineSlice / 9-patch）
+     * @param graphics GuiGraphics实例
+     * @param texture 纹理资源路径
+     * @param x 目标X坐标
+     * @param y 目标Y坐标
+     * @param width 目标宽度
+     * @param height 目标高度
+     * @param border 边框宽度（九宫格边缘厚度）
+     */
+    public static void renderNineSlice(GuiGraphics graphics, ResourceLocation texture,
+                                       int x, int y, int width, int height, int border) {
+        // 纹理总尺寸（假设256x256）
+        int texWidth = 256;
+        int texHeight = 256;
+
+        // 九宫格布局：
+        // +------+--------+------+
+        // |  TL  |   T    |  TR  |
+        // +------+--------+------+
+        // |  L   | CENTER |  R   |
+        // +------+--------+------+
+        // |  BL  |   B    |  BR  |
+        // +------+--------+------+
+
+        int innerWidth = width - border * 2;
+        int innerHeight = height - border * 2;
+
+        // 左上角（TL）
+        graphics.blit(texture, x, y, 0, 0, border, border, texWidth, texHeight);
+
+        // 上边（T）- 拉伸
+        graphics.blit(texture, x + border, y, border, 0, innerWidth, border, texWidth, texHeight);
+
+        // 右上角（TR）
+        graphics.blit(texture, x + width - border, y, texWidth - border, 0, border, border, texWidth, texHeight);
+
+        // 左边（L）- 拉伸
+        graphics.blit(texture, x, y + border, 0, border, border, innerHeight, texWidth, texHeight);
+
+        // 中心（CENTER）- 拉伸
+        graphics.blit(texture, x + border, y + border, border, border, innerWidth, innerHeight, texWidth, texHeight);
+
+        // 右边（R）- 拉伸
+        graphics.blit(texture, x + width - border, y + border, texWidth - border, border, border, innerHeight, texWidth, texHeight);
+
+        // 左下角（BL）
+        graphics.blit(texture, x, y + height - border, 0, texHeight - border, border, border, texWidth, texHeight);
+
+        // 下边（B）- 拉伸
+        graphics.blit(texture, x + border, y + height - border, border, texHeight - border, innerWidth, border, texWidth, texHeight);
+
+        // 右下角（BR）
+        graphics.blit(texture, x + width - border, y + height - border, texWidth - border, texHeight - border, border, border, texWidth, texHeight);
+    }
+
+    /**
+     * 渲染居中容器（使用纹理）
      * @param graphics GuiGraphics实例
      * @param screenWidth 屏幕宽度
      * @param screenHeight 屏幕高度
      * @return 容器边界数组 [panelX, panelY, panelW, panelH]
      */
     public static int[] renderCenteredContainer(GuiGraphics graphics, int screenWidth, int screenHeight) {
-        // 计算容器尺寸和位置（80%~85%宽度，上24px，下64px）
+        // 计算容器尺寸和位置（80%~85%宽度，上24px，下96px）
         int panelW = Math.min((int)(screenWidth * 0.85), 1100);
         int panelX = (screenWidth - panelW) / 2;
         int panelY = 24;
-        int panelH = screenHeight - 88; // 上24px + 下64px = 88px
+        int panelH = screenHeight - 96; // 上24px + 下72px = 96px
 
-        // 1. 渲染轻微阴影（偏移Y+2，透明度30%）
-        graphics.fill(panelX + 2, panelY + 2, panelX + panelW + 2, panelY + panelH + 2, 0x30000000);
-
-        // 2. 渲染容器背景（浅羊皮纸）
-        graphics.fill(panelX, panelY, panelX + panelW, panelY + panelH, BG_CONTAINER);
-
-        // 3. 渲染外层细边框（1px暗金色 #7a4b2a）
-        graphics.fill(panelX - 1, panelY - 1, panelX + panelW + 1, panelY, BORDER_BROWN); // 上
-        graphics.fill(panelX - 1, panelY + panelH, panelX + panelW + 1, panelY + panelH + 1, BORDER_BROWN); // 下
-        graphics.fill(panelX - 1, panelY - 1, panelX, panelY + panelH + 1, BORDER_BROWN); // 左
-        graphics.fill(panelX + panelW, panelY - 1, panelX + panelW + 1, panelY + panelH + 1, BORDER_BROWN); // 右
-
-        // 4. 渲染内层细边框（1px金色 #d4af37，内缩1px）
-        int innerOffset = 1;
-        graphics.fill(panelX + innerOffset, panelY + innerOffset,
-                     panelX + panelW - innerOffset, panelY + innerOffset + 1, BORDER_INNER_GOLD); // 上
-        graphics.fill(panelX + innerOffset, panelY + panelH - innerOffset - 1,
-                     panelX + panelW - innerOffset, panelY + panelH - innerOffset, BORDER_INNER_GOLD); // 下
-        graphics.fill(panelX + innerOffset, panelY + innerOffset,
-                     panelX + innerOffset + 1, panelY + panelH - innerOffset, BORDER_INNER_GOLD); // 左
-        graphics.fill(panelX + panelW - innerOffset - 1, panelY + innerOffset,
-                     panelX + panelW - innerOffset, panelY + panelH - innerOffset, BORDER_INNER_GOLD); // 右
+        // 使用九宫格纹理渲染容器边框（边框宽度16px）
+        renderNineSlice(graphics, CONTAINER_FRAME, panelX, panelY, panelW, panelH, 16);
 
         return new int[]{panelX, panelY, panelW, panelH};
     }
