@@ -190,24 +190,29 @@ public class CultivationHUD {
      * @param cultivation 修仙能力
      */
     private static void drawBackground(GuiGraphics guiGraphics, int hudX, int hudY, ICultivation cultivation) {
-        // 计算背景高度（进度条 + 文本行数）
         int lineCount = getSpiritPowerTextLines();
         lineCount += getSpiritualRootLines();
         lineCount += getRealmLines();
         lineCount += getFoundationLines();
         lineCount += getRecoveryLines();
         lineCount += getPracticeLines(cultivation);
-        
+
         int bgHeight = BAR_HEIGHT + (LINE_HEIGHT * lineCount) + 4;
-        
-        // 绘制半透明背景
-        guiGraphics.fill(
-            hudX - 2, 
-            hudY - 2, 
-            hudX + BAR_WIDTH + 2, 
-            hudY + bgHeight, 
-            BACKGROUND_COLOR
-        );
+
+        int left = hudX - 2;
+        int top = hudY - 2;
+        int right = hudX + BAR_WIDTH + 2;
+        int bottom = hudY + bgHeight;
+
+        int topColor = 0x80222222;
+        int bottomColor = 0x80111111;
+        guiGraphics.fillGradient(left, top, right, bottom, topColor, bottomColor);
+
+        int vignetteAlpha = 0x30000000;
+        guiGraphics.fill(left, top, right, top + 2, vignetteAlpha);
+        guiGraphics.fill(left, bottom - 2, right, bottom, vignetteAlpha);
+        guiGraphics.fill(left, top, left + 2, bottom, vignetteAlpha);
+        guiGraphics.fill(right - 2, top, right, bottom, vignetteAlpha);
     }
     
     /**
@@ -291,7 +296,7 @@ public class CultivationHUD {
         
         // 绘制灵力值文本（在进度条下方）
         int textY = hudY + BAR_HEIGHT + 3;
-        guiGraphics.drawString(font, powerText, hudX, textY, textColor);
+        drawTextWithShadow(guiGraphics, font, powerText, hudX, textY, textColor);
     }
     
     /**
@@ -325,10 +330,10 @@ public class CultivationHUD {
                 int textY = computeTextY(hudY, lineOffset);
                 
                 // 绘制灵根类型文本
-        guiGraphics.drawString(font, "灵根: " + rootTypeName, hudX, textY, color | 0xFF000000);
+        drawTextWithShadow(guiGraphics, font, "灵根: " + rootTypeName, hudX, textY, color | 0xFF000000);
                 
                 // 绘制灵根品质文本
-        guiGraphics.drawString(font, "品质: " + rootQuality, hudX, textY + LINE_HEIGHT, qualityColor);
+        drawTextWithShadow(guiGraphics, font, "品质: " + rootQuality, hudX, textY + LINE_HEIGHT, qualityColor);
     }
     
     /**
@@ -360,7 +365,7 @@ public class CultivationHUD {
             realmText += " " + subRealmName;
         }
         // 旧的等级系统已淘汰，不再显示 Lv.
-        guiGraphics.drawString(font, realmText, hudX, textY, realmColor);
+        drawTextWithShadow(guiGraphics, font, realmText, hudX, textY, realmColor);
     }
     
     /**
@@ -374,7 +379,7 @@ public class CultivationHUD {
         int lineOffset = getLineOffsetBeforeFoundation();
         int textY = computeTextY(hudY, lineOffset);
         String foundationText = String.format("根基: %d (%s)", foundation, descriptor.label());
-        guiGraphics.drawString(font, foundationText, hudX, textY, descriptor.color() | 0xFF000000);
+        drawTextWithShadow(guiGraphics, font, foundationText, hudX, textY, descriptor.color() | 0xFF000000);
     }
     
     /**
@@ -409,7 +414,7 @@ public class CultivationHUD {
             // 标准环境，只显示总速率
             recoveryText = String.format("恢复: %.2fx", actualRate);
         }
-        guiGraphics.drawString(font, recoveryText, hudX, textY, recoveryColor);
+        drawTextWithShadow(guiGraphics, font, recoveryText, hudX, textY, recoveryColor);
     }
     
     /**
@@ -493,7 +498,7 @@ public class CultivationHUD {
             boolean shouldBlink = (time / 500) % 2 == 0;
             int practiceColor = shouldBlink ? 0xFFFFAA00 : 0xFFFFCC00; // 橙色闪烁
             
-            guiGraphics.drawString(font, practiceText, hudX, textY, practiceColor);
+            drawTextWithShadow(guiGraphics, font, practiceText, hudX, textY, practiceColor);
             textY += LINE_HEIGHT;
         }
         
@@ -507,7 +512,7 @@ public class CultivationHUD {
         if (requiredExp > 0) {
             // 绘制经验文本
             String expText = String.format("修炼经验: %d/%d", currentExp, requiredExp);
-            guiGraphics.drawString(font, expText, hudX, textY, 0xFFAAFF00);
+            drawTextWithShadow(guiGraphics, font, expText, hudX, textY, 0xFFAAFF00);
             textY += LINE_HEIGHT + 2;
             
             // 绘制经验条
@@ -547,18 +552,19 @@ public class CultivationHUD {
         if (cultivation.hasEquippedTechnique()) {
             org.example.Kangnaixi.tiandao.technique.TechniqueData technique = cultivation.getEquippedTechnique();
             if (technique != null) {
-                // 功法名称和等级
-                String techniqueName = String.format("§7功法: §e%s §7Lv.%d", 
-                    technique.getName(), technique.getLevel());
-                guiGraphics.drawString(font, techniqueName, hudX, textY, 0xFFFFFFFF);
+                String techniqueName = String.format("§7功法: §e%s §7Lv.%d", technique.getName(), technique.getLevel());
+                drawTextWithShadow(guiGraphics, font, techniqueName, hudX, textY, 0xFFFFFFFF);
                 textY += LINE_HEIGHT;
-                
-                // 效率加成
-                String efficiencyText = String.format("§7效率: §a%.1f%%", 
-                    technique.getEfficiencyBonus() * 100);
-                guiGraphics.drawString(font, efficiencyText, hudX, textY, 0xFFFFFFFF);
+                String efficiencyText = String.format("§7效率: §a%.1f%%", technique.getEfficiencyBonus() * 100);
+                drawTextWithShadow(guiGraphics, font, efficiencyText, hudX, textY, 0xFFFFFFFF);
             }
         }
+    }
+
+    private static void drawTextWithShadow(GuiGraphics g, Font font, String text, int x, int y, int color) {
+        int shadow = 0x40000000;
+        g.drawString(font, text, x + 1, y + 1, shadow);
+        g.drawString(font, text, x, y, color);
     }
     
 }

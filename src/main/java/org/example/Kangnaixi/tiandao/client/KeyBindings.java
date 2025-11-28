@@ -46,6 +46,12 @@ public class KeyBindings {
         CATEGORY
     );
 
+    public static final KeyMapping TOGGLE_SPELL_HAND_WHEEL = new KeyMapping(
+        "key.tiandao.toggle_spell_hand_wheel",
+        GLFW.GLFW_KEY_V,  // V 键切换手持法盘
+        CATEGORY
+    );
+
     /**
      * 注册按键绑定
      */
@@ -56,6 +62,7 @@ public class KeyBindings {
         event.register(TOGGLE_HUD_DETAILS);
         event.register(OPEN_SPELL_EDITOR);
         event.register(TOGGLE_MINDSEA_HOLO);
+        event.register(TOGGLE_SPELL_HAND_WHEEL);
         Tiandao.LOGGER.info("修仙按键绑定已注册");
     }
 }

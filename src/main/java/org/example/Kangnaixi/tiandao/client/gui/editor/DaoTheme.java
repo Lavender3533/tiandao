@@ -19,16 +19,16 @@ public final class DaoTheme {
     // ==================== 纹理资源 ====================
 
     /** 全屏背景纹理 */
-    public static final ResourceLocation BG_BASE = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/bg_base.png");
+    public static final ResourceLocation BG_BASE = new ResourceLocation(Tiandao.MOD_ID, "textures/gui/spell_editor/bg_base.png");
 
     /** 容器边框纹理（九宫格） */
-    public static final ResourceLocation CONTAINER_FRAME = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/container_frame.png");
+    public static final ResourceLocation CONTAINER_FRAME = new ResourceLocation(Tiandao.MOD_ID, "textures/gui/spell_editor/container_frame.png");
 
     /** 浅色卡片纹理（九宫格） */
-    public static final ResourceLocation CARD_LIGHT = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/card_light.png");
+    public static final ResourceLocation CARD_LIGHT = new ResourceLocation(Tiandao.MOD_ID, "textures/gui/spell_editor/card_light.png");
 
     /** 深色卡片纹理（九宫格，用于按钮） */
-    public static final ResourceLocation CARD_DARK = new ResourceLocation(Tiandao.MODID, "textures/gui/spell_editor/card_dark.png");
+    public static final ResourceLocation CARD_DARK = new ResourceLocation(Tiandao.MOD_ID, "textures/gui/spell_editor/card_dark.png");
 
     // ==================== 基础色板 ====================
 
@@ -526,7 +526,7 @@ public final class DaoTheme {
         int panelH = screenHeight - 96; // 上24px + 下72px = 96px
 
         // 使用九宫格纹理渲染容器边框（边框宽度16px）
-        renderNineSlice(graphics, CONTAINER_FRAME, panelX, panelY, panelW, panelH, 16);
+        //renderNineSlice(graphics, CONTAINER_FRAME, panelX, panelY, panelW, panelH, 16);
 
         return new int[]{panelX, panelY, panelW, panelH};
     }

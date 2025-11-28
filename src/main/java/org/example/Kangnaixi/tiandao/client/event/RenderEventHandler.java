@@ -10,46 +10,44 @@ import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.renderer.SpellEffectRenderer;
 
 /**
- * 渲染事件处理器
- * 
- * 负责监听游戏渲染事件并调用自定义渲染器：
- * - 灵气护盾球体渲染
- * - 其他术法特效渲染
- * - 在正确的渲染阶段（半透明方块之后）进行渲染
+ * 渲染事件处理器：
+ * - 术法特效（AFTER_TRANSLUCENT_BLOCKS）
+ * - 识海全息（单独由 MindSeaHoloRenderer 控制开关）
  */
 @Mod.EventBusSubscriber(modid = Tiandao.MOD_ID, value = Dist.CLIENT)
 public class RenderEventHandler {
-    
-    /**
-     * 监听世界渲染事件
-     * 
-     * 在渲染半透明方块之后渲染术法特效，确保正确的渲染顺序
-     * 
-     * @param event 渲染事件
-     */
+
+    private static boolean mindSeaEnabled = false;
+
+    public static void toggleMindSeaRendering() {
+        mindSeaEnabled = !mindSeaEnabled;
+        Tiandao.LOGGER.info("识海渲染状态: {}", mindSeaEnabled ? "启用" : "禁用");
+    }
+
+    public static void setMindSeaEnabled(boolean enabled) {
+        mindSeaEnabled = enabled;
+    }
+
+    public static boolean isMindSeaEnabled() {
+        return mindSeaEnabled;
+    }
+
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        // 只在半透明方块渲染阶段之后处理
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
-            return;
-        }
-        
-        // 检查客户端状态
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
             return;
         }
-        
-        // 获取姿态栈和部分 tick
+
         PoseStack poseStack = event.getPoseStack();
         float partialTick = event.getPartialTick();
-        
-        try {
-            // 渲染所有术法特效
-            SpellEffectRenderer.getInstance().renderAll(poseStack, partialTick);
-        } catch (Exception e) {
-            // 捕获异常以防止游戏崩溃
-            Tiandao.LOGGER.error("术法特效渲染时发生错误", e);
+
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            try {
+                SpellEffectRenderer.getInstance().renderAll(poseStack, partialTick);
+            } catch (Exception e) {
+                Tiandao.LOGGER.error("术法特效渲染时发生错误", e);
+            }
         }
     }
 }

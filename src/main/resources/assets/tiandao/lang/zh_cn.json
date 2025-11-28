@@ -95,6 +95,7 @@
   "key.tiandao.cast_spell_2": "施放术法 2",
   "key.tiandao.cast_spell_3": "施放术法 3",
   "key.tiandao.cast_spell_4": "施放术法 4",
+  "key.tiandao.toggle_spell_hand_wheel": "手持法盘",
   "message.tiandao.hud.enabled": "修仙HUD已启用",
   "message.tiandao.hud.disabled": "修仙HUD已禁用",
   "gui.tiandao.cultivation_status.title": "修仙状态",

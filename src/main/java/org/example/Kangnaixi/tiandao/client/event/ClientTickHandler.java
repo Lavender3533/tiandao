@@ -10,8 +10,7 @@ import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.KeyBindings;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationHUD;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationStatusScreen;
-import org.example.Kangnaixi.tiandao.client.gui.editor.SpellEditorScreen;
-import org.example.Kangnaixi.tiandao.client.gui.editor.SpellEditorViewModel;
+import org.example.Kangnaixi.tiandao.client.renderer.SpellHandStarRenderer;
 import org.example.Kangnaixi.tiandao.config.CultivationConfig;
 
 /**
@@ -58,10 +57,17 @@ public class ClientTickHandler {
         }
 
         while (KeyBindings.OPEN_SPELL_EDITOR.consumeClick()) {
-            if (minecraft.player != null && minecraft.screen == null) {
-                SpellEditorViewModel model = new SpellEditorViewModel();
-                model.setSpellId("tiandao:custom_spell");
-                minecraft.setScreen(new SpellEditorScreen(model));
+            // GUI 已禁用，跳过
+        }
+
+        // 处理手持法盘切换键 (V键)
+        while (KeyBindings.TOGGLE_SPELL_HAND_WHEEL.consumeClick()) {
+            if (minecraft.player != null) {
+                boolean enabled = SpellHandStarRenderer.toggle();
+                String message = enabled
+                    ? "§6【手持法盘】§f已开启 - 滚轮切换，点击确认"
+                    : "§6【手持法盘】§f已关闭";
+                minecraft.player.sendSystemMessage(Component.literal(message));
             }
         }
     }

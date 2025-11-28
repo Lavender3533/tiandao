@@ -24,6 +24,7 @@ public class CultivationStatusScreen extends Screen {
     
     private int panelLeft;
     private int panelTop;
+    private long startMs;
     
     public CultivationStatusScreen(Player player) {
         super(Component.literal("修仙状态"));
@@ -36,6 +37,7 @@ public class CultivationStatusScreen extends Screen {
         // 计算面板位置，使其居中
         this.panelLeft = (this.width - PANEL_WIDTH) / 2;
         this.panelTop = (this.height - PANEL_HEIGHT) / 2;
+        this.startMs = System.currentTimeMillis();
     }
     
     @Override
@@ -44,7 +46,15 @@ public class CultivationStatusScreen extends Screen {
             // 渲染背景
         this.renderBackground(guiGraphics);
         
-            // 渲染面板
+            float t = Math.min(1.0f, (System.currentTimeMillis() - startMs) / 400.0f);
+            float p = VisualUtils.easeInOutExpo(t);
+            float scale = 0.92f + 0.08f * p;
+            int cx = panelLeft + PANEL_WIDTH / 2;
+            int cy = panelTop + PANEL_HEIGHT / 2;
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(cx, cy, 0);
+            guiGraphics.pose().scale(scale, scale, 1);
+            guiGraphics.pose().translate(-cx, -cy, 0);
             renderPanel(guiGraphics);
             
             // 渲染内容
@@ -52,6 +62,7 @@ public class CultivationStatusScreen extends Screen {
             
             // 调用父类渲染（用于渲染按钮等）
             super.render(guiGraphics, mouseX, mouseY, partialTick);
+            guiGraphics.pose().popPose();
         } catch (Exception e) {
             Tiandao.LOGGER.error("渲染修仙状态界面时出错", e);
         }
@@ -61,21 +72,7 @@ public class CultivationStatusScreen extends Screen {
      * 渲染面板背景
      */
     private void renderPanel(GuiGraphics guiGraphics) {
-        // 绘制半透明背景
-        guiGraphics.fill(
-            this.panelLeft, 
-            this.panelTop, 
-            this.panelLeft + PANEL_WIDTH, 
-            this.panelTop + PANEL_HEIGHT, 
-            0xE0EEEEEE
-        );
-        
-        // 绘制边框
-        int borderColor = 0xFF888888;
-        guiGraphics.fill(this.panelLeft, this.panelTop, this.panelLeft + PANEL_WIDTH, this.panelTop + 1, borderColor); // 上
-        guiGraphics.fill(this.panelLeft, this.panelTop + PANEL_HEIGHT - 1, this.panelLeft + PANEL_WIDTH, this.panelTop + PANEL_HEIGHT, borderColor); // 下
-        guiGraphics.fill(this.panelLeft, this.panelTop, this.panelLeft + 1, this.panelTop + PANEL_HEIGHT, borderColor); // 左
-        guiGraphics.fill(this.panelLeft + PANEL_WIDTH - 1, this.panelTop, this.panelLeft + PANEL_WIDTH, this.panelTop + PANEL_HEIGHT, borderColor); // 右
+        VisualUtils.drawFrostedGlassPanel(guiGraphics, panelLeft, panelTop, PANEL_WIDTH, PANEL_HEIGHT);
     }
     
     /**
@@ -90,7 +87,7 @@ public class CultivationStatusScreen extends Screen {
         int y = this.panelTop + PADDING;
         
         // 渲染标题
-        guiGraphics.drawString(this.font, this.title, x, y, 0xFF404040);
+        VisualUtils.drawGlowText(guiGraphics, this.font, this.title.getString(), x, y, 0xFFFFFFFF);
         final int startY = y + LINE_HEIGHT + 5;
         
         // 获取玩家修仙数据

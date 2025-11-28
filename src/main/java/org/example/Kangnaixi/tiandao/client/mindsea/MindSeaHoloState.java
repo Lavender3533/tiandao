@@ -62,7 +62,7 @@ public class MindSeaHoloState {
     private final OrbData[] selectedOrbs = new OrbData[5];        // 底部5个槽位
     private int hoveredGroup = -1;                                // 鼠标hover的组
     private int hoveredOrbIndex = -1;                             // 鼠标hover的光球索引
-    private float radius = 2.5f;                                  // 环绕半径
+    private float radius = 2.0f;                                  // 环绕半径（紧贴玩家）
 
     // ==================== 单例 ====================
 
@@ -82,14 +82,14 @@ public class MindSeaHoloState {
      */
     private void initializeGroups() {
         // 第1组：起手式（固定在左前方，-45度世界方向，弧线跨度30度）
-        GroupData group1 = new GroupData("起手式", 0xFFFFD700, -45f, 30f);
+        GroupData group1 = new GroupData("起手式", 0xFFFFD700, -45f, 22f);
         group1.orbs.add(new OrbData("self", "自身", 0xFFFFD700));
         group1.orbs.add(new OrbData("array", "阵盘", 0xFFFFD700));
         group1.orbs.add(new OrbData("artifact", "法器", 0xFFFFD700));
         groups.add(group1);
 
         // 第2组：释放方式（固定在右前方，+45度世界方向，弧线跨度40度）
-        GroupData group2 = new GroupData("释放方式", 0xFF40E0D0, 45f, 40f);
+        GroupData group2 = new GroupData("释放方式", 0xFF40E0D0, 45f, 22f);
         group2.orbs.add(new OrbData("projectile", "投射", 0xFF40E0D0));
         group2.orbs.add(new OrbData("line", "直线", 0xFF40E0D0));
         group2.orbs.add(new OrbData("sphere", "球体", 0xFF40E0D0));
@@ -97,7 +97,7 @@ public class MindSeaHoloState {
         groups.add(group2);
 
         // 第3组：形状（固定在左后方，-135度世界方向，弧线跨度40度）
-        GroupData group3 = new GroupData("形状", 0xFFB0E0FF, -135f, 40f);
+        GroupData group3 = new GroupData("形状", 0xFFB0E0FF, -135f, 22f);
         group3.orbs.add(new OrbData("ball", "球体", 0xFFB0E0FF));
         group3.orbs.add(new OrbData("wall", "墙体", 0xFFB0E0FF));
         group3.orbs.add(new OrbData("ring", "环绕", 0xFFB0E0FF));
@@ -105,7 +105,7 @@ public class MindSeaHoloState {
         groups.add(group3);
 
         // 第4组：属性（固定在正后方，180度世界方向，弧线跨度40度）
-        GroupData group4 = new GroupData("属性", 0xFFDA70D6, 180f, 40f);
+        GroupData group4 = new GroupData("属性", 0xFFDA70D6, 180f, 22f);
         group4.orbs.add(new OrbData("fire", "火", 0xFFDA70D6));
         group4.orbs.add(new OrbData("water", "水", 0xFFDA70D6));
         group4.orbs.add(new OrbData("thunder", "雷", 0xFFDA70D6));
@@ -113,7 +113,7 @@ public class MindSeaHoloState {
         groups.add(group4);
 
         // 第5组：效果（固定在右后方，+135度世界方向，弧线跨度40度）
-        GroupData group5 = new GroupData("效果", 0xFFFFE4B5, 135f, 40f);
+        GroupData group5 = new GroupData("效果", 0xFFFFE4B5, 135f, 22f);
         group5.orbs.add(new OrbData("explode", "爆炸", 0xFFFFE4B5));
         group5.orbs.add(new OrbData("ignite", "点燃", 0xFFFFE4B5));
         group5.orbs.add(new OrbData("knockback", "击退", 0xFFFFE4B5));
@@ -141,7 +141,7 @@ public class MindSeaHoloState {
     }
 
     private void reset() {
-        radius = 2.5f;
+        radius = 2.0f;
         hoveredGroup = -1;
         hoveredOrbIndex = -1;
         for (int i = 0; i < selectedOrbs.length; i++) {

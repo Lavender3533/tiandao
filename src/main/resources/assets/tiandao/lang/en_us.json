@@ -60,6 +60,7 @@
   "key.tiandao.toggle_hud_details": "Toggle HUD Details",
   "key.tiandao.open_spell_editor": "Open Spell Editor",
   "key.tiandao.toggle_mindsea_holo": "Toggle MindSea Holo",
+  "key.tiandao.toggle_spell_hand_wheel": "Spell Hand Wheel",
   "message.tiandao.hud.enabled": "Cultivation HUD enabled",
   "message.tiandao.hud.disabled": "Cultivation HUD disabled",
   "tiandao.spell.element.fire": "Fire",
