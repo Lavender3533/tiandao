@@ -147,7 +147,33 @@ public class TiandaoCommand {
                             }
                             return builder.buildFuture();
                         })
-                        .executes(TiandaoCommand::spellCast))))
+                        .executes(TiandaoCommand::spellCast)))
+                .then(Commands.literal("info")
+                    .then(Commands.argument("spellId", StringArgumentType.string())
+                        .suggests((context, builder) -> {
+                            org.example.Kangnaixi.tiandao.spell.SpellRegistry.getInstance().getAllSpellIds().forEach(builder::suggest);
+                            return builder.buildFuture();
+                        })
+                        .executes(TiandaoCommand::spellInfo)))
+                .then(Commands.literal("hotbar")
+                    .then(Commands.literal("bind")
+                        .then(Commands.argument("slot", IntegerArgumentType.integer(1, 9))
+                            .then(Commands.argument("bindSpellId", StringArgumentType.string())
+                                .executes(TiandaoCommand::spellHotbarBind))))
+                    .then(Commands.literal("clear")
+                        .then(Commands.argument("slot", IntegerArgumentType.integer(1, 9))
+                            .executes(TiandaoCommand::spellHotbarClear)))
+                    .then(Commands.literal("list")
+                        .executes(TiandaoCommand::spellHotbarList)))
+                .then(Commands.literal("debug")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.literal("targets")
+                        .then(Commands.literal("on").executes(ctx -> spellDebugTargets(ctx, true)))
+                        .then(Commands.literal("off").executes(ctx -> spellDebugTargets(ctx, false)))
+                        .then(Commands.literal("toggle").executes(TiandaoCommand::spellDebugTargetsToggle))
+                        .executes(TiandaoCommand::spellDebugTargetsReport)))
+                .then(Commands.literal("editor")
+                    .executes(TiandaoCommand::spellEditor)))
             .then(Commands.literal("allocate")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.argument("player", EntityArgument.player())
@@ -260,25 +286,67 @@ public class TiandaoCommand {
     }
 
     private static int showDetailedHelp(CommandContext<CommandSourceStack> context) {
-        context.getSource().sendSuccess(() -> Component.literal("=== 天道修仙系统命令帮助 ==="), false);
+        context.getSource().sendSuccess(() -> Component.literal("§6§l=== 天道修仙系统命令帮助 ==="), false);
         context.getSource().sendSuccess(() -> Component.literal(""), false);
-        context.getSource().sendSuccess(() -> Component.literal("玩家命令:"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao status - 查看自己的修仙状态"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao status <玩家> - 查看其他玩家状态"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation [玩家] - 查看根基状态"), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§e【玩家命令】"), false);
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 基础查询"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao status [玩家] §f- 查看修仙状态"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao foundation [玩家] §f- 查看根基状态"), false);
         context.getSource().sendSuccess(() -> Component.literal(""), false);
-        context.getSource().sendSuccess(() -> Component.literal("管理员命令 (需要OP权限):"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao setrealm <境界> [等级] - 设置境界"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao setroot <灵根> - 设置灵根"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao allocate <玩家> [类型] [品质] - 分配灵根"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation set <玩家> <数值> - 直接设置根基"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao foundation add <玩家> <变化量> - 调整根基"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao addprogress <数量> - 增加修炼进度"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao addspiritpower <数量> - 增加灵力"), false);
-        context.getSource().sendSuccess(() -> Component.literal("  /tiandao breakthrough - 强制突破"), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 术法系统 §7(/tiandao spell)"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell list §f- 列出已解锁的术法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell cast <术法ID> §f- 施放术法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell info <术法ID> §f- 查看术法详情"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell editor §f- 打开术法编辑器"), false);
         context.getSource().sendSuccess(() -> Component.literal(""), false);
-        context.getSource().sendSuccess(() -> Component.literal("提示: 命令支持Tab自动补全"), false);
-        context.getSource().sendSuccess(() -> Component.literal("提示: /cultivation 是 /tiandao 的别名"), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 术法快捷栏 §7(/tiandao spell hotbar)"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell hotbar list §f- 查看快捷栏配置"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell hotbar bind <槽位> <术法ID> §f- 绑定术法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell hotbar clear <槽位> §f- 清空槽位"), false);
+        context.getSource().sendSuccess(() -> Component.literal(""), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 功法系统 §7(/tiandao technique)"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao technique list §f- 列出已学功法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao technique learn <功法ID> §f- 学习功法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao technique equip <功法ID> §f- 装备功法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao technique unequip §f- 卸下功法"), false);
+        context.getSource().sendSuccess(() -> Component.literal(""), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 修炼系统 §7(/tiandao practice)"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao practice start §f- 开始修炼"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao practice stop §f- 停止修炼"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao practice status §f- 查看修炼状态"), false);
+        context.getSource().sendSuccess(() -> Component.literal(""), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§c【管理员命令】 §7(需要OP权限)"), false);
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 境界管理"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao setrealm <境界> [等级] §f- 设置境界"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao setroot <灵根> §f- 设置灵根"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao allocate <玩家> [类型] [品质] §f- 分配灵根"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao breakthrough §f- 强制突破"), false);
+        context.getSource().sendSuccess(() -> Component.literal(""), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 数值调整"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao addprogress <数量> §f- 增加修炼进度"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao addspiritpower <数量> §f- 增加灵力"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao foundation set <玩家> <数值> §f- 设置根基"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao foundation add <玩家> <变化量> §f- 调整根基"), false);
+        context.getSource().sendSuccess(() -> Component.literal(""), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§b▸ 术法管理"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell unlock <术法ID> §f- 解锁术法"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell blueprint give <玩家> <蓝图> §f- 给予术法蓝图"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell blueprint list [玩家] §f- 列出已掌握蓝图"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7/tiandao spell debug targets on/off/toggle §f- 目标调试可视化"), false);
+        context.getSource().sendSuccess(() -> Component.literal(""), false);
+
+        context.getSource().sendSuccess(() -> Component.literal("§a💡 提示"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7• 所有命令支持Tab自动补全"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7• §f/cultivation §7是 §f/tiandao §7的别名"), false);
+        context.getSource().sendSuccess(() -> Component.literal("  §7• 使用 §f/tiandao help §7查看此帮助"), false);
         return 1;
     }
 
@@ -941,5 +1009,143 @@ public class TiandaoCommand {
             builder.append('§').append(Character.toLowerCase(c));
         }
         return builder.toString();
+    }
+
+    /**
+     * 显示术法详细信息 (/tiandao spell info <id>)
+     */
+    private static int spellInfo(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        String spellId = StringArgumentType.getString(context, "spellId");
+
+        org.example.Kangnaixi.tiandao.spell.definition.SpellDefinition spell =
+            org.example.Kangnaixi.tiandao.spell.SpellRegistry.getInstance().getSpellById(spellId);
+
+        if (spell == null) {
+            context.getSource().sendFailure(Component.literal("§c术法不存在: " + spellId));
+            return 0;
+        }
+
+        return player.getCapability(Tiandao.CULTIVATION_CAPABILITY).map(cultivation -> {
+            context.getSource().sendSuccess(() -> Component.literal("§6§l=== 术法详情 ==="), false);
+            context.getSource().sendSuccess(() -> Component.literal("§e名称: §f" + spell.getMetadata().displayName()), false);
+            context.getSource().sendSuccess(() -> Component.literal("§7ID: §8" + spellId), false);
+            context.getSource().sendSuccess(() -> Component.literal(""), false);
+            context.getSource().sendSuccess(() -> Component.literal("§f" + spell.getMetadata().description()), false);
+            context.getSource().sendSuccess(() -> Component.literal(""), false);
+            context.getSource().sendSuccess(() -> Component.literal(
+                String.format("§b灵力消耗: §f%.0f点", spell.getBaseStats().spiritCost())), false);
+            context.getSource().sendSuccess(() -> Component.literal(
+                String.format("§b冷却时间: §f%.1f秒", spell.getBaseStats().cooldownSeconds())), false);
+
+            boolean unlocked = cultivation.hasSpell(spellId);
+            context.getSource().sendSuccess(() -> Component.literal(""), false);
+            if (unlocked) {
+                int cooldownRemaining = cultivation.getSpellCooldownRemaining(spellId);
+                if (cooldownRemaining > 0) {
+                    context.getSource().sendSuccess(() -> Component.literal("§c[冷却中: " + cooldownRemaining + "秒]"), false);
+                } else {
+                    context.getSource().sendSuccess(() -> Component.literal("§a[已解锁 - 可施放]"), false);
+                }
+            } else {
+                context.getSource().sendSuccess(() -> Component.literal("§7[未解锁]"), false);
+            }
+            return 1;
+        }).orElse(0);
+    }
+
+    /**
+     * 绑定术法到快捷栏 (/tiandao spell hotbar bind <slot> <spellId>)
+     */
+    private static int spellHotbarBind(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        int slot = IntegerArgumentType.getInteger(context, "slot");
+        String spellId = StringArgumentType.getString(context, "bindSpellId");
+
+        return player.getCapability(Tiandao.SPELL_HOTBAR_CAP).map(hotbar -> {
+            hotbar.setSlot(slot - 1, spellId);
+            context.getSource().sendSuccess(() -> Component.literal(
+                "§a已将术法 §e" + spellId + " §a绑定到槽位 §b" + slot), false);
+            org.example.Kangnaixi.tiandao.network.NetworkHandler.sendSpellHotbarSyncToPlayer(hotbar, player);
+            return 1;
+        }).orElse(0);
+    }
+
+    /**
+     * 清空快捷栏槽位 (/tiandao spell hotbar clear <slot>)
+     */
+    private static int spellHotbarClear(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        int slot = IntegerArgumentType.getInteger(context, "slot");
+
+        return player.getCapability(Tiandao.SPELL_HOTBAR_CAP).map(hotbar -> {
+            hotbar.setSlot(slot - 1, null);
+            context.getSource().sendSuccess(() -> Component.literal("§7已清空槽位 §b" + slot), false);
+            org.example.Kangnaixi.tiandao.network.NetworkHandler.sendSpellHotbarSyncToPlayer(hotbar, player);
+            return 1;
+        }).orElse(0);
+    }
+
+    /**
+     * 列出快捷栏配置 (/tiandao spell hotbar list)
+     */
+    private static int spellHotbarList(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+
+        return player.getCapability(Tiandao.SPELL_HOTBAR_CAP).map(hotbar -> {
+            context.getSource().sendSuccess(() -> Component.literal("§6=== 术法快捷栏 ==="), false);
+            for (int i = 0; i < 9; i++) {
+                String spellId = hotbar.getSlot(i);
+                boolean isActive = (i == hotbar.getActiveIndex());
+                String prefix = isActive ? "§a▶ " : "§7  ";
+                String display = spellId == null || spellId.isEmpty() ? "§8<空>" : "§e" + spellId;
+                int finalI = i;
+                context.getSource().sendSuccess(() -> Component.literal(prefix + "§b[" + (finalI + 1) + "] " + display), false);
+            }
+            return 1;
+        }).orElse(0);
+    }
+
+    /**
+     * 设置术法调试 - 目标可视化 (/tiandao spell debug targets on/off)
+     */
+    private static int spellDebugTargets(CommandContext<CommandSourceStack> context, boolean value) {
+        org.example.Kangnaixi.tiandao.spell.debug.SpellDebugConfig.setShowTargets(value);
+        context.getSource().sendSuccess(() ->
+            Component.literal("§7目标调试粒子 " + (value ? "§a已开启" : "§c已关闭")), false);
+        return 1;
+    }
+
+    /**
+     * 切换术法调试 - 目标可视化 (/tiandao spell debug targets toggle)
+     */
+    private static int spellDebugTargetsToggle(CommandContext<CommandSourceStack> context) {
+        org.example.Kangnaixi.tiandao.spell.debug.SpellDebugConfig.toggleTargets();
+        boolean enabled = org.example.Kangnaixi.tiandao.spell.debug.SpellDebugConfig.isShowTargets();
+        context.getSource().sendSuccess(() ->
+            Component.literal("§7目标调试粒子 " + (enabled ? "§a已开启" : "§c已关闭")), false);
+        return 1;
+    }
+
+    /**
+     * 报告术法调试状态 (/tiandao spell debug targets)
+     */
+    private static int spellDebugTargetsReport(CommandContext<CommandSourceStack> context) {
+        boolean enabled = org.example.Kangnaixi.tiandao.spell.debug.SpellDebugConfig.isShowTargets();
+        context.getSource().sendSuccess(() ->
+            Component.literal("§7目标调试粒子当前: " + (enabled ? "§a开启" : "§c关闭")), false);
+        return 1;
+    }
+
+    /**
+     * 打开术法编辑器 (/tiandao spell editor)
+     */
+    private static int spellEditor(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        org.example.Kangnaixi.tiandao.network.NetworkHandler.sendOpenSpellEditorToPlayer(
+            new org.example.Kangnaixi.tiandao.network.packet.OpenSpellEditorPacket("tiandao:custom_spell"),
+            player);
+        context.getSource().sendSuccess(() -> Component.literal("§a正在打开术法编辑器..."), false);
+        return 1;
     }
 }
