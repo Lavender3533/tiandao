@@ -182,8 +182,8 @@ public class CultivationHUD {
     }
     
     /**
-     * 绘制HUD背景
-     * 
+     * 绘制HUD背景（使用 3 层渲染：阴影 → 背景 → 边框）
+     *
      * @param guiGraphics GuiGraphics 实例
      * @param hudX HUD X 坐标
      * @param hudY HUD Y 坐标
@@ -198,21 +198,30 @@ public class CultivationHUD {
         lineCount += getPracticeLines(cultivation);
 
         int bgHeight = BAR_HEIGHT + (LINE_HEIGHT * lineCount) + 4;
+        int bgWidth = BAR_WIDTH + 4;
 
         int left = hudX - 2;
         int top = hudY - 2;
-        int right = hudX + BAR_WIDTH + 2;
-        int bottom = hudY + bgHeight;
 
-        int topColor = 0x80222222;
-        int bottomColor = 0x80111111;
-        guiGraphics.fillGradient(left, top, right, bottom, topColor, bottomColor);
+        // Layer 1: Shadow (阴影 - 2px 偏移)
+        guiGraphics.fill(left + 2, top + 2, left + bgWidth + 2, top + bgHeight + 2,
+                        org.example.Kangnaixi.tiandao.client.gui.editor.DaoTheme.SHADOW_OUTER);
 
-        int vignetteAlpha = 0x30000000;
-        guiGraphics.fill(left, top, right, top + 2, vignetteAlpha);
-        guiGraphics.fill(left, bottom - 2, right, bottom, vignetteAlpha);
-        guiGraphics.fill(left, top, left + 2, bottom, vignetteAlpha);
-        guiGraphics.fill(right - 2, top, right, bottom, vignetteAlpha);
+        // Layer 2: Background (背景渐变 - 羊皮纸)
+        guiGraphics.fillGradient(left, top, left + bgWidth, top + bgHeight,
+                                org.example.Kangnaixi.tiandao.client.gui.editor.DaoTheme.BG_CONTAINER,
+                                org.example.Kangnaixi.tiandao.client.gui.editor.DaoTheme.BG_PARCHMENT_EDGE);
+
+        // Layer 3: Border (边框 - 深棕色)
+        int borderColor = org.example.Kangnaixi.tiandao.client.gui.editor.DaoTheme.BORDER_BROWN;
+        // 上
+        guiGraphics.fill(left, top, left + bgWidth, top + 1, borderColor);
+        // 下
+        guiGraphics.fill(left, top + bgHeight - 1, left + bgWidth, top + bgHeight, borderColor);
+        // 左
+        guiGraphics.fill(left, top, left + 1, top + bgHeight, borderColor);
+        // 右
+        guiGraphics.fill(left + bgWidth - 1, top, left + bgWidth, top + bgHeight, borderColor);
     }
     
     /**

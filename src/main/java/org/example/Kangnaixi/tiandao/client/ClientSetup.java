@@ -1,7 +1,9 @@
 package org.example.Kangnaixi.tiandao.client;
 
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.client.event.HandWheelKeyHandler;
 import org.example.Kangnaixi.tiandao.client.event.RenderEventHandler;
 import org.example.Kangnaixi.tiandao.client.mindsea.MindSeaHoloEvents;
 
@@ -36,5 +38,9 @@ public class ClientSetup {
         } catch (ClassNotFoundException e) {
             Tiandao.LOGGER.error("无法加载 MindSeaHoloEvents 类", e);
         }
+
+        // 注册手盘按键处理器
+        MinecraftForge.EVENT_BUS.register(HandWheelKeyHandler.class);
+        Tiandao.LOGGER.info("HandWheelKeyHandler 手盘按键处理器已注册");
     }
 }

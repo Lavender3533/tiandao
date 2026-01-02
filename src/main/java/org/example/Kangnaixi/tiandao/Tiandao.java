@@ -55,10 +55,11 @@ public class Tiandao {
     public static final String MOD_ID = "tiandao"; // 娑撹桨绨￠崗鐓庮啇閹勫潑閸?    // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
     
-    // 閼宠棄濮忓▔銊ュ斀
+    // Capability定义
     public static final Capability<ICultivation> CULTIVATION_CAPABILITY = CapabilityManager.get(new CapabilityToken<ICultivation>() {});
     public static final Capability<IPlayerSpells> PLAYER_SPELLS_CAP = CapabilityManager.get(new CapabilityToken<IPlayerSpells>() {});
     public static final Capability<ISpellHotbar> SPELL_HOTBAR_CAP = CapabilityManager.get(new CapabilityToken<ISpellHotbar>() {});
+    public static final Capability<org.example.Kangnaixi.tiandao.capability.IStarChartData> STAR_CHART_CAP = CapabilityManager.get(new CapabilityToken<org.example.Kangnaixi.tiandao.capability.IStarChartData>() {});
     // Create a Deferred Register to hold Blocks which will all be registered under the "tiandao" namespace
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
     // Create a Deferred Register to hold Items which will all be registered under the "tiandao" namespace
@@ -175,6 +176,7 @@ public class Tiandao {
         event.register(ICultivation.class);
         event.register(IPlayerSpells.class);
         event.register(ISpellHotbar.class);
+        event.register(org.example.Kangnaixi.tiandao.capability.IStarChartData.class);
     }
 
     // Add the example block item to the building blocks tab

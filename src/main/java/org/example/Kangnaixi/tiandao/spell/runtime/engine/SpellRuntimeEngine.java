@@ -6,6 +6,8 @@ import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.cultivation.ExperienceConversionSystem;
 import org.example.Kangnaixi.tiandao.network.CultivationDataSyncPacket;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
+import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprint;
+import org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprintLibrary;
 import org.example.Kangnaixi.tiandao.spell.runtime.AttributeType;
 import org.example.Kangnaixi.tiandao.spell.runtime.EffectType;
 import org.example.Kangnaixi.tiandao.spell.runtime.Spell;
@@ -13,10 +15,84 @@ import org.example.Kangnaixi.tiandao.spell.runtime.SpellExecutor;
 
 /**
  * 新版模块化术法运行时引擎。
+ *
+ * 支持两种术法格式：
+ * 1. SpellBlueprint（推荐）- 统一的术法成品格式
+ * 2. Spell（旧版）- 保留兼容性
  */
 public final class SpellRuntimeEngine {
 
     private SpellRuntimeEngine() {}
+
+    // ==================== Blueprint 执行入口（推荐） ====================
+
+    /**
+     * 施放Blueprint术法（主入口）
+     *
+     * @param player    施法者
+     * @param blueprint 术法蓝图
+     * @return 是否成功施放
+     */
+    public static boolean cast(ServerPlayer player, SpellBlueprint blueprint) {
+        if (player == null || blueprint == null) {
+            return false;
+        }
+
+        BlueprintExecutor.ExecutionResult result = BlueprintExecutor.execute(player, blueprint);
+
+        if (result.isSuccess()) {
+            // 同步修炼数据
+            player.getCapability(Tiandao.CULTIVATION_CAPABILITY).ifPresent(cultivation -> {
+                ExperienceConversionSystem.onSpiritConsumed(player, result.getSpiritCost());
+                NetworkHandler.sendToPlayer(new CultivationDataSyncPacket(cultivation), player);
+            });
+
+            player.sendSystemMessage(Component.literal(
+                "§a施放术法: §e" + blueprint.getName() +
+                " §7(消耗 " + String.format("%.1f", result.getSpiritCost()) + " 灵力)"
+            ));
+
+            return true;
+        } else {
+            player.sendSystemMessage(Component.literal("§c" + result.getMessage()));
+            return false;
+        }
+    }
+
+    /**
+     * 通过ID施放Blueprint术法
+     *
+     * @param player      施法者
+     * @param blueprintId 术法蓝图ID
+     * @return 是否成功施放
+     */
+    public static boolean castById(ServerPlayer player, String blueprintId) {
+        if (player == null || blueprintId == null || blueprintId.isEmpty()) {
+            return false;
+        }
+
+        // 1. 从蓝图库查找
+        SpellBlueprint blueprint = SpellBlueprintLibrary.get(blueprintId);
+
+        // 2. 从玩家已学蓝图查找
+        if (blueprint == null) {
+            blueprint = player.getCapability(Tiandao.CULTIVATION_CAPABILITY)
+                .map(cultivation -> cultivation.getKnownBlueprints().stream()
+                    .filter(bp -> bp.getId().equals(blueprintId))
+                    .findFirst()
+                    .orElse(null))
+                .orElse(null);
+        }
+
+        if (blueprint == null) {
+            player.sendSystemMessage(Component.literal("§c未找到术法: " + blueprintId));
+            return false;
+        }
+
+        return cast(player, blueprint);
+    }
+
+    // ==================== 旧版 Spell 执行（兼容性） ====================
 
     public static boolean canCast(ServerPlayer player, Spell spell) {
         // TODO 施法前检查（灵力、冷却、境界等）

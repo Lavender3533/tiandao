@@ -8,20 +8,22 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.renderer.SpellHandStarRenderer;
+import org.example.Kangnaixi.tiandao.client.starchart.StarChartInputHandler;
 import org.lwjgl.glfw.GLFW;
 
 /**
  * 鼠标输入事件处理器
- * 用于处理手持法盘界面的鼠标交互
+ * 用于处理手持法盘界面和星盘的鼠标交互
  *
  * 交互方式：
- * - 滚轮滚动：旋转选择扇区
- * - 左键点击：确认当前选择
+ * - 滚轮滚动：旋转选择扇区（手持法盘）
+ * - 左键点击：确认当前选择（手持法盘）/ 解锁星盘节点（星盘）
+ * - 鼠标移动：更新悬停状态（星盘）
  */
 @Mod.EventBusSubscriber(modid = Tiandao.MOD_ID, value = Dist.CLIENT)
 public class MouseInputHandler {
 
-    private static final String[] SECTOR_NAMES = {"增强", "形态", "效果", "源"};
+    private static final String[] SECTOR_NAMES = {"调制", "形态", "效果"};  // 3扇区
 
     /**
      * 处理鼠标滚轮事件 - 旋转选择扇区
@@ -61,6 +63,16 @@ public class MouseInputHandler {
         // 只在按下时触发（不处理释放）
         if (event.getAction() != GLFW.GLFW_PRESS) {
             return;
+        }
+
+        // 优先处理星盘点击（会自动取消事件）
+        try {
+            StarChartInputHandler.onMouseClick(event);
+            if (event.isCanceled()) {
+                return; // 星盘已处理，不再继续
+            }
+        } catch (Exception e) {
+            Tiandao.LOGGER.error("星盘鼠标点击处理时发生错误", e);
         }
 
         // 如果手持法盘界面开启，处理点击

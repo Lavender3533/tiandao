@@ -8,11 +8,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
 import org.example.Kangnaixi.tiandao.client.renderer.SpellEffectRenderer;
+import org.example.Kangnaixi.tiandao.client.starchart.StarChartRenderer;
 
 /**
  * 渲染事件处理器：
  * - 术法特效（AFTER_TRANSLUCENT_BLOCKS）
  * - 识海全息（单独由 MindSeaHoloRenderer 控制开关）
+ * - 星盘3D渲染（AFTER_TRANSLUCENT_BLOCKS）
  */
 @Mod.EventBusSubscriber(modid = Tiandao.MOD_ID, value = Dist.CLIENT)
 public class RenderEventHandler {
@@ -47,6 +49,13 @@ public class RenderEventHandler {
                 SpellEffectRenderer.getInstance().renderAll(poseStack, partialTick);
             } catch (Exception e) {
                 Tiandao.LOGGER.error("术法特效渲染时发生错误", e);
+            }
+
+            // 渲染星盘3D节点
+            try {
+                StarChartRenderer.render(event);
+            } catch (Exception e) {
+                Tiandao.LOGGER.error("星盘3D渲染时发生错误", e);
             }
         }
     }

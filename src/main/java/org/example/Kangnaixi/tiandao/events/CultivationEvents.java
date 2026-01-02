@@ -54,6 +54,11 @@ public class CultivationEvents {
             ResourceLocation hotbarId = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "spell_hotbar");
             event.addCapability(hotbarId, hotbarProvider);
             Tiandao.LOGGER.debug("为玩家附加术法快捷栏 Capability");
+
+            org.example.Kangnaixi.tiandao.capability.StarChartProvider starChartProvider = new org.example.Kangnaixi.tiandao.capability.StarChartProvider();
+            ResourceLocation starChartId = ResourceLocation.fromNamespaceAndPath(Tiandao.MODID, "star_chart");
+            event.addCapability(starChartId, starChartProvider);
+            Tiandao.LOGGER.debug("为玩家附加星盘 Capability");
         }
     }
 
@@ -104,6 +109,17 @@ public class CultivationEvents {
         LazyOptional<ISpellHotbar> originalHotbar = original.getCapability(Tiandao.SPELL_HOTBAR_CAP);
         LazyOptional<ISpellHotbar> newHotbar = player.getCapability(Tiandao.SPELL_HOTBAR_CAP);
         originalHotbar.ifPresent(oldCap -> newHotbar.ifPresent(copy -> copy.copyFrom(oldCap)));
+
+        LazyOptional<org.example.Kangnaixi.tiandao.capability.IStarChartData> originalStarChart = original.getCapability(Tiandao.STAR_CHART_CAP);
+        LazyOptional<org.example.Kangnaixi.tiandao.capability.IStarChartData> newStarChart = player.getCapability(Tiandao.STAR_CHART_CAP);
+        originalStarChart.ifPresent(oldData -> {
+            newStarChart.ifPresent(newData -> {
+                if (oldData instanceof org.example.Kangnaixi.tiandao.capability.StarChartCapability oldStarCap &&
+                    newData instanceof org.example.Kangnaixi.tiandao.capability.StarChartCapability newStarCap) {
+                    newStarCap.copyFrom(oldStarCap);
+                }
+            });
+        });
 
         // 清理原始玩家的capability
         original.invalidateCaps();
@@ -167,6 +183,14 @@ public class CultivationEvents {
 
                 player.getCapability(Tiandao.SPELL_HOTBAR_CAP).ifPresent(hotbar ->
                     NetworkHandler.sendSpellHotbarSyncToPlayer(hotbar, serverPlayer));
+
+                // 同步星盘数据
+                player.getCapability(Tiandao.STAR_CHART_CAP).ifPresent(starChart -> {
+                    if (starChart instanceof org.example.Kangnaixi.tiandao.capability.StarChartCapability data) {
+                        NetworkHandler.sendToPlayer(new org.example.Kangnaixi.tiandao.network.packet.S2CSyncStarChartPacket(data), serverPlayer);
+                        Tiandao.LOGGER.debug("玩家登录时同步星盘数据到客户端");
+                    }
+                });
             }
         });
     }

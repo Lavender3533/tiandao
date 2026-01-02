@@ -8,6 +8,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.client.starchart.StarChartClientManager;
 import org.example.Kangnaixi.tiandao.network.NetworkHandler;
 import org.example.Kangnaixi.tiandao.network.packet.C2SCastActiveSpellPacket;
 import org.example.Kangnaixi.tiandao.network.packet.C2SHotbarSelectPacket;
@@ -66,6 +67,10 @@ public class KeybindHandler {
      */
     @Mod.EventBusSubscriber(modid = Tiandao.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
     public static class ClientTickHandler {
+        
+        // 按键状态（防止重复触发）
+        private static boolean upKeyPressed = false;
+        private static boolean downKeyPressed = false;
 
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -75,9 +80,48 @@ public class KeybindHandler {
             }
 
             // 检查施法键
+            // 注意：星盘开启时，R键用于联动填充手盘，不执行施法
             if (CAST_SPELL.consumeClick()) {
-                Tiandao.LOGGER.info("R键被按下，发送施法数据包到服务器");
-                NetworkHandler.sendCastActiveSpellToServer(new C2SCastActiveSpellPacket());
+                // 如果星盘已开启，跳过施法（R键由HandWheelKeyHandler处理联动）
+                if (StarChartClientManager.getInstance().isEnabled()) {
+                    Tiandao.LOGGER.debug("星盘已开启，R键用于联动，跳过施法");
+                    return;
+                }
+                
+                // 获取当前选中的术法并施放
+                org.example.Kangnaixi.tiandao.spell.blueprint.SpellBlueprint selectedSpell = 
+                    org.example.Kangnaixi.tiandao.client.gui.HandWheelComboHud.getSelectedSpell();
+                if (selectedSpell != null) {
+                    Tiandao.LOGGER.info("R键施放术法: {}", selectedSpell.getName());
+                    NetworkHandler.sendCastActiveSpellToServer(new C2SCastActiveSpellPacket(selectedSpell.getId()));
+                } else {
+                    Tiandao.LOGGER.info("R键被按下，发送施法数据包到服务器");
+                    NetworkHandler.sendCastActiveSpellToServer(new C2SCastActiveSpellPacket());
+                }
+            }
+            
+            // 上下键选择术法
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.screen == null) {
+                long window = mc.getWindow().getWindow();
+                if (org.lwjgl.glfw.GLFW.glfwGetKey(window, org.lwjgl.glfw.GLFW.GLFW_KEY_UP) == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+                    // 防止重复触发
+                    if (!upKeyPressed) {
+                        org.example.Kangnaixi.tiandao.client.gui.HandWheelComboHud.selectPrev();
+                        upKeyPressed = true;
+                    }
+                } else {
+                    upKeyPressed = false;
+                }
+                
+                if (org.lwjgl.glfw.GLFW.glfwGetKey(window, org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN) == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+                    if (!downKeyPressed) {
+                        org.example.Kangnaixi.tiandao.client.gui.HandWheelComboHud.selectNext();
+                        downKeyPressed = true;
+                    }
+                } else {
+                    downKeyPressed = false;
+                }
             }
 
             // 检查快捷栏数字键

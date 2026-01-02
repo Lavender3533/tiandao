@@ -36,13 +36,19 @@ public class KeyBindings {
 
     public static final KeyMapping OPEN_SPELL_EDITOR = new KeyMapping(
         "key.tiandao.open_spell_editor",
-        GLFW.GLFW_KEY_K,  // 改为 K 键
+        GLFW.GLFW_KEY_L,  // L 键 - 术法编辑器（已禁用）
+        CATEGORY
+    );
+
+    public static final KeyMapping OPEN_STAR_CHART = new KeyMapping(
+        "key.tiandao.open_star_chart",
+        GLFW.GLFW_KEY_K,  // K 键 - 打开星盘
         CATEGORY
     );
 
     public static final KeyMapping TOGGLE_MINDSEA_HOLO = new KeyMapping(
         "key.tiandao.toggle_mindsea_holo",
-        GLFW.GLFW_KEY_B,  // 改为 B 键（内视）
+        GLFW.GLFW_KEY_B,  // B 键（内视）
         CATEGORY
     );
 
@@ -61,6 +67,7 @@ public class KeyBindings {
         event.register(TOGGLE_HUD);
         event.register(TOGGLE_HUD_DETAILS);
         event.register(OPEN_SPELL_EDITOR);
+        event.register(OPEN_STAR_CHART);
         event.register(TOGGLE_MINDSEA_HOLO);
         event.register(TOGGLE_SPELL_HAND_WHEEL);
         Tiandao.LOGGER.info("修仙按键绑定已注册");

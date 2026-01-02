@@ -80,18 +80,6 @@ public final class NetworkHandler {
             .consumerMainThread(SpellBlueprintCreatePacket::handle)
             .add();
 
-        INSTANCE.messageBuilder(OpenRuneEditorPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
-            .decoder(OpenRuneEditorPacket::new)
-            .encoder(OpenRuneEditorPacket::encode)
-            .consumerMainThread(OpenRuneEditorPacket::handle)
-            .add();
-
-        INSTANCE.messageBuilder(OpenNodeEditorPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
-            .decoder(OpenNodeEditorPacket::new)
-            .encoder(OpenNodeEditorPacket::encode)
-            .consumerMainThread(OpenNodeEditorPacket::handle)
-            .add();
-
         INSTANCE.messageBuilder(OpenSpellEditorPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
             .decoder(OpenSpellEditorPacket::new)
             .encoder(OpenSpellEditorPacket::encode)
@@ -115,6 +103,32 @@ public final class NetworkHandler {
             .decoder(C2SHotbarBindPacket::new)
             .encoder(C2SHotbarBindPacket::encode)
             .consumerMainThread(C2SHotbarBindPacket::handle)
+            .add();
+
+        // 星盘相关数据包
+        INSTANCE.messageBuilder(C2SUnlockStarNodePacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+            .decoder(C2SUnlockStarNodePacket::new)
+            .encoder(C2SUnlockStarNodePacket::encode)
+            .consumerMainThread(C2SUnlockStarNodePacket::handle)
+            .add();
+
+        INSTANCE.messageBuilder(S2CSyncStarChartPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(S2CSyncStarChartPacket::new)
+            .encoder(S2CSyncStarChartPacket::encode)
+            .consumerMainThread(S2CSyncStarChartPacket::handle)
+            .add();
+
+        // 手盘组合相关数据包
+        INSTANCE.messageBuilder(C2SHandWheelCompilePacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+            .decoder(C2SHandWheelCompilePacket::new)
+            .encoder(C2SHandWheelCompilePacket::encode)
+            .consumerMainThread(C2SHandWheelCompilePacket::handle)
+            .add();
+
+        INSTANCE.messageBuilder(S2CSpellLearnedPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(S2CSpellLearnedPacket::new)
+            .encoder(S2CSpellLearnedPacket::encode)
+            .consumerMainThread(S2CSpellLearnedPacket::handle)
             .add();
 
         Tiandao.LOGGER.info("网络数据包注册完成");
@@ -148,14 +162,6 @@ public final class NetworkHandler {
         INSTANCE.sendToServer(packet);
     }
 
-    public static void sendOpenRuneEditorToPlayer(OpenRuneEditorPacket packet, ServerPlayer player) {
-        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
-    }
-
-    public static void sendOpenNodeEditorToPlayer(OpenNodeEditorPacket packet, ServerPlayer player) {
-        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
-    }
-
     public static void sendOpenSpellEditorToPlayer(OpenSpellEditorPacket packet, ServerPlayer player) {
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
@@ -175,5 +181,14 @@ public final class NetworkHandler {
 
     public static void sendHotbarBindToServer(C2SHotbarBindPacket packet) {
         INSTANCE.sendToServer(packet);
+    }
+
+    // 通用发送方法
+    public static <T> void sendToServer(T packet) {
+        INSTANCE.sendToServer(packet);
+    }
+
+    public static <T> void sendToPlayer(T packet, ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 }

@@ -174,6 +174,22 @@ public class TiandaoCommand {
                         .executes(TiandaoCommand::spellDebugTargetsReport)))
                 .then(Commands.literal("editor")
                     .executes(TiandaoCommand::spellEditor)))
+            .then(Commands.literal("starchart")
+                .then(Commands.literal("unlock")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.literal("all")
+                        .executes(TiandaoCommand::starChartUnlockAll))
+                    .then(Commands.argument("nodeId", StringArgumentType.string())
+                        .suggests((context, builder) -> {
+                            for (org.example.Kangnaixi.tiandao.starchart.StarNode node : 
+                                 org.example.Kangnaixi.tiandao.starchart.StarTestNodes.getAllNodes()) {
+                                builder.suggest(node.getId());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .executes(TiandaoCommand::starChartUnlockNode)))
+                .then(Commands.literal("list")
+                    .executes(TiandaoCommand::starChartList)))
             .then(Commands.literal("allocate")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.argument("player", EntityArgument.player())
@@ -1146,6 +1162,110 @@ public class TiandaoCommand {
             new org.example.Kangnaixi.tiandao.network.packet.OpenSpellEditorPacket("tiandao:custom_spell"),
             player);
         context.getSource().sendSuccess(() -> Component.literal("§a正在打开术法编辑器..."), false);
+        return 1;
+    }
+
+    // ========== 星盘命令 ==========
+
+    /**
+     * 解锁所有星盘节点 (/tiandao starchart unlock all)
+     */
+    private static int starChartUnlockAll(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+
+        player.getCapability(Tiandao.STAR_CHART_CAP).ifPresent(data -> {
+            if (data instanceof org.example.Kangnaixi.tiandao.capability.StarChartCapability capability) {
+                int count = 0;
+                for (org.example.Kangnaixi.tiandao.starchart.StarNode node : 
+                     org.example.Kangnaixi.tiandao.starchart.StarTestNodes.getAllNodes()) {
+                    if (capability.unlockNode(node.getId())) {
+                        count++;
+                    }
+                }
+                final int unlocked = count;
+                context.getSource().sendSuccess(() -> 
+                    Component.literal("§a已解锁 §e" + unlocked + " §a个星盘节点"), false);
+                
+                // 同步到客户端
+                org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
+                    new org.example.Kangnaixi.tiandao.network.packet.S2CSyncStarChartPacket(capability.getUnlockedNodes()),
+                    player
+                );
+            }
+        });
+
+        return 1;
+    }
+
+    /**
+     * 解锁单个星盘节点 (/tiandao starchart unlock <nodeId>)
+     */
+    private static int starChartUnlockNode(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        String nodeId = StringArgumentType.getString(context, "nodeId");
+
+        player.getCapability(Tiandao.STAR_CHART_CAP).ifPresent(data -> {
+            if (data instanceof org.example.Kangnaixi.tiandao.capability.StarChartCapability capability) {
+                org.example.Kangnaixi.tiandao.starchart.StarNode node = 
+                    org.example.Kangnaixi.tiandao.starchart.StarTestNodes.getNodeById(nodeId);
+                
+                if (node == null) {
+                    context.getSource().sendFailure(Component.literal("§c未找到节点: " + nodeId));
+                    return;
+                }
+
+                if (capability.unlockNode(nodeId)) {
+                    context.getSource().sendSuccess(() -> 
+                        Component.literal("§a已解锁节点: §e" + node.getName() + " §7(" + nodeId + ")"), false);
+                    
+                    // 同步到客户端
+                    org.example.Kangnaixi.tiandao.network.NetworkHandler.sendToPlayer(
+                        new org.example.Kangnaixi.tiandao.network.packet.S2CSyncStarChartPacket(capability.getUnlockedNodes()),
+                        player
+                    );
+                } else {
+                    context.getSource().sendSuccess(() -> 
+                        Component.literal("§7节点已解锁: §e" + node.getName()), false);
+                }
+            }
+        });
+
+        return 1;
+    }
+
+    /**
+     * 列出已解锁的星盘节点 (/tiandao starchart list)
+     */
+    private static int starChartList(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+
+        player.getCapability(Tiandao.STAR_CHART_CAP).ifPresent(data -> {
+            java.util.Set<String> unlocked = data.getUnlockedNodes();
+            
+            if (unlocked.isEmpty()) {
+                context.getSource().sendSuccess(() -> Component.literal("§7你还没有解锁任何星盘节点"), false);
+                return;
+            }
+
+            context.getSource().sendSuccess(() -> Component.literal("§6§l已解锁的星盘节点 §7(" + unlocked.size() + "个)"), false);
+            
+            // 按类别分组显示
+            java.util.Map<org.example.Kangnaixi.tiandao.starchart.StarNodeCategory, java.util.List<String>> byCategory = new java.util.HashMap<>();
+            for (String nodeId : unlocked) {
+                org.example.Kangnaixi.tiandao.starchart.StarNode node = 
+                    org.example.Kangnaixi.tiandao.starchart.StarTestNodes.getNodeById(nodeId);
+                if (node != null) {
+                    byCategory.computeIfAbsent(node.getCategory(), k -> new java.util.ArrayList<>()).add(node.getName());
+                }
+            }
+            
+            for (var entry : byCategory.entrySet()) {
+                String names = String.join(", ", entry.getValue());
+                context.getSource().sendSuccess(() -> 
+                    Component.literal("  §b" + entry.getKey().getDisplayName() + ": §f" + names), false);
+            }
+        });
+
         return 1;
     }
 }

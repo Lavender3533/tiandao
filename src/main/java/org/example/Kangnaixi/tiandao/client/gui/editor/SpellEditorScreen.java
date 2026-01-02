@@ -587,8 +587,9 @@ public class SpellEditorScreen extends Screen {
 
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 1. 渲染全屏背景纹理（bg_base.png）
-        guiGraphics.blit(DaoTheme.BG_BASE, 0, 0, 0, 0, this.width, this.height, this.width, this.height);
+        // 1. 渲染全屏背景（术法编辑器已禁用，使用程序化背景）
+        // guiGraphics.blit(DaoTheme.BG_BASE, 0, 0, 0, 0, this.width, this.height, this.width, this.height);
+        guiGraphics.fill(0, 0, this.width, this.height, 0xFF1A1A1A); // 暗色背景
 
         // 2. 渲染居中容器（九宫格纹理 container_frame.png）
         DaoTheme.renderCenteredContainer(guiGraphics, this.width, this.height);

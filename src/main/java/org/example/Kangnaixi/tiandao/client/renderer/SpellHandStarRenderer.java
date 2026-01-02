@@ -23,6 +23,8 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.example.Kangnaixi.tiandao.Tiandao;
+import org.example.Kangnaixi.tiandao.client.starchart.StarChartClientManager;
+import org.example.Kangnaixi.tiandao.starchart.StarNodeCategory;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -75,25 +77,28 @@ public final class SpellHandStarRenderer {
     private static final int SEGMENTS = 64;                      // 圆环细分数
     private static final float TEXT_SCALE = 0.015f;              // 文字缩放
 
-    // ========== 物品角度分布（局部坐标系：90度均布） ==========
+    // ========== 物品角度分布（局部坐标系：120度均布，3扇区） ==========
     private static final float[] SECTOR_ANGLES = {
-        0f,      // 0 - Right (右侧)
-        90f,     // 1 - Top (上方)
-        180f,    // 2 - Left (左侧)
-        270f     // 3 - Bottom (下方)
+        0f,      // 0 - Right (右侧) - 调制
+        120f,    // 1 - Top-Left (左上) - 形态
+        240f     // 2 - Bottom-Left (左下) - 效果
     };
 
     // 颜色
     private static final int COLOR_RING  = 0xFF60AAFF;
-    private static final int COLOR_CROSS = 0xFF80BBFF;
-    private static final int COLOR_SECTOR_NORMAL = 0x4060AAFF;
+    private static final int COLOR_CROSS = 0x4080BBFF;  // 降低分割线透明度（从 0xFF 改为 0x40）
+    private static final int COLOR_SECTOR_NORMAL = 0xA060AAFF;  // 增加扇区不透明度（从 0x40 改为 0xA0）
     private static final int COLOR_SECTOR_HOVER = 0xCC60FFAA;
+    private static final int COLOR_SOURCE_CENTER = 0xFFFFAA00;  // 中心源的颜色（金色）
 
     // 状态
     private static boolean enabled = false;
 
     // ========== 滚轮选择状态 (Scroll Selection State) ==========
-    private static int selectedIndex = 0;            // 当前选中的扇区索引 (0-3)
+    private static int selectedIndex = 0;            // 当前选中的扇区索引 (0-2)
+
+    // ========== 源选择状态 (Source Selection State) ==========
+    private static int selectedSourceIndex = 0;      // 当前选中的源类型索引
 
     // ========== 摩天轮动画 (Ferris Wheel Animation) ==========
     private static float currentAngle = 0f;          // 当前盘子旋转角度（平滑插值）
@@ -101,23 +106,49 @@ public final class SpellHandStarRenderer {
     private static final float ROTATION_SPEED = 0.15f; // 旋转平滑速度
 
     // ========== 花朵绽放动画 (Bloom Animation) ==========
-    private static float[] itemBloomProgress = {0f, 0f, 0f, 0f}; // 每个扇区的绽放进度 (0-1)
+    private static float[] itemBloomProgress = {0f, 0f, 0f}; // 每个扇区的绽放进度 (0-1)，改为3个
+
+    // ========== 源切换动画 ==========
+    private static float sourceBloomProgress = 0f;   // 源图标绽放进度
 
     // 手盘在世界空间的位置（缓存）
     private static Vec3 handWheelWorldPos = Vec3.ZERO;
 
-    // 手盘扇区数据
+    // 手盘外圈扇区数据（3个，不含源）
     public enum WheelSector {
-        CORE("源", new ItemStack(Items.MAGMA_CREAM), 0xFFFF5555),      // Core - 岩浆膏 - 红色
-        FORM("形态", new ItemStack(Items.BOOK), 0xFF5555FF),           // Form - 书 - 蓝色
-        EFFECT("效果", new ItemStack(Items.DIAMOND_SWORD), 0xFF55FF55), // Effect - 钻石剑 - 绿色
-        MOD("增强", new ItemStack(Items.GLOWSTONE_DUST), 0xFFFFFF55);  // Mod - 萤石粉 - 黄色
+        FORM("形态", new ItemStack(Items.BOOK), 0xFF87CEEB, StarNodeCategory.FORM),               // 形态 - 书 - 天蓝色
+        EFFECT("效果", new ItemStack(Items.DIAMOND_SWORD), 0xFFFF6347, StarNodeCategory.EFFECT),  // 效果 - 钻石剑 - 番茄红
+        MODIFIER("调制", new ItemStack(Items.GLOWSTONE_DUST), 0xFF9370DB, StarNodeCategory.MODIFIER); // 调制 - 萤石粉 - 紫色
+
+        private final String name;
+        private final ItemStack icon;
+        private final int color;
+        private final StarNodeCategory linkedCategory;  // 关联的星宫类别
+
+        WheelSector(String name, ItemStack icon, int color, StarNodeCategory linkedCategory) {
+            this.name = name;
+            this.icon = icon;
+            this.color = color;
+            this.linkedCategory = linkedCategory;
+        }
+
+        public String getName() { return name; }
+        public ItemStack getIcon() { return icon; }
+        public int getColor() { return color; }
+        public StarNodeCategory getLinkedCategory() { return linkedCategory; }
+    }
+
+    // 中心源类型
+    public enum SourceType {
+        SELF("自身", new ItemStack(Items.NETHER_STAR), 0xFFFFAA00),        // 自身灵力 - 下界之星 - 金色
+        ARRAY("阵盘", new ItemStack(Items.LODESTONE), 0xFF00AAFF),         // 阵盘 - 磁石 - 蓝色
+        ITEM("灵物", new ItemStack(Items.AMETHYST_SHARD), 0xFFAA00FF);     // 背包灵物 - 紫水晶碎片 - 紫色
 
         private final String name;
         private final ItemStack icon;
         private final int color;
 
-        WheelSector(String name, ItemStack icon, int color) {
+        SourceType(String name, ItemStack icon, int color) {
             this.name = name;
             this.icon = icon;
             this.color = color;
@@ -128,14 +159,15 @@ public final class SpellHandStarRenderer {
         public int getColor() { return color; }
     }
 
-    // 扇区数组（按照角度顺序：右上左下）
-    // 映射：sectorIndex * 90° = 实际角度
+    // 外圈扇区数组（3个，120度均布）
     private static final WheelSector[] SECTORS = {
-        WheelSector.MOD,      // 0 - Right (0°)
-        WheelSector.FORM,     // 1 - Top (90°)
-        WheelSector.EFFECT,   // 2 - Left (180°)
-        WheelSector.CORE      // 3 - Bottom (270°)
+        WheelSector.MODIFIER,   // 0 - Right (0°)
+        WheelSector.FORM,       // 1 - Top-Left (120°)
+        WheelSector.EFFECT      // 2 - Bottom-Left (240°)
     };
+
+    // 源类型数组
+    private static final SourceType[] SOURCES = SourceType.values();
 
     // 动画时间
     private static long animationStartTime = System.currentTimeMillis();
@@ -146,16 +178,31 @@ public final class SpellHandStarRenderer {
         Minecraft mc = Minecraft.getInstance();
         enabled = !enabled;
 
+        StarChartClientManager starChart = StarChartClientManager.getInstance();
+
         if (enabled) {
             // 打开手盘：重置选择状态和动画
             animationStartTime = System.currentTimeMillis();
             selectedIndex = 0;
+            selectedSourceIndex = 0;
             // 初始状态：让选中扇区立即显示在右侧（0°/3点钟方向）
-            targetAngle = -selectedIndex * 90f;  // -0 = 0°
+            targetAngle = -selectedIndex * 120f;  // 3扇区，每个120度
             currentAngle = targetAngle;  // 无动画，直接到位
+
+            // ========== 同步开关：联动打开星盘 ==========
+            if (!starChart.isEnabled()) {
+                starChart.toggle();
+                Tiandao.LOGGER.info("HandWheel opened → StarChart synced open");
+            }
+
             Tiandao.LOGGER.info("SpellHandStarRenderer opened: scroll to select");
         } else {
-            // 关闭手盘
+            // ========== 同步开关：联动关闭星盘 ==========
+            if (starChart.isEnabled()) {
+                starChart.toggle();
+                Tiandao.LOGGER.info("HandWheel closed → StarChart synced close");
+            }
+
             Tiandao.LOGGER.info("SpellHandStarRenderer closed: selected sector = " + selectedIndex);
         }
 
@@ -164,14 +211,15 @@ public final class SpellHandStarRenderer {
 
     public static boolean isEnabled() { return enabled; }
     public static int getSelectedIndex() { return selectedIndex; }
+    public static int getSelectedSourceIndex() { return selectedSourceIndex; }
+    public static SourceType getSelectedSource() { return SOURCES[selectedSourceIndex]; }
 
     /**
-     * 处理鼠标滚轮事件 - 切换选择扇区并触发旋转动画
+     * 处理鼠标滚轮事件
      *
-     * 摩天轮模式：
-     * - 改变selectedIndex，更新targetAngle
-     * - 使用Math.floorMod确保索引在0-3范围内（解决负数问题）
-     * - 渲染时盘子会平滑旋转到目标角度，让选中项转到最上方
+     * 交互模式：
+     * - 普通滚轮：切换外圈扇区（效果/形态/调制），联动星盘
+     * - 蹲下+滚轮：切换中心源类型（自身/阵盘/灵物），不联动星盘
      *
      * @param scrollDelta 滚轮增量（正数=向上滚，负数=向下滚）
      * @return true表示事件已处理
@@ -180,29 +228,98 @@ public final class SpellHandStarRenderer {
         if (!enabled) return false;
 
         Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return false;
 
+        // 检测是否蹲下
+        boolean isSneaking = mc.player.isShiftKeyDown();
+
+        if (isSneaking) {
+            // ========== 蹲下+滚轮：切换源类型 ==========
+            return handleSourceScroll(scrollDelta, mc);
+        } else {
+            // ========== 普通滚轮：切换外圈扇区 ==========
+            return handleSectorScroll(scrollDelta, mc);
+        }
+    }
+
+    /**
+     * 处理外圈扇区滚轮切换
+     */
+    private static boolean handleSectorScroll(double scrollDelta, Minecraft mc) {
         if (scrollDelta > 0) {
-            // 滚轮向上 - 逆时针选择上一个（减少索引）
-            selectedIndex = Math.floorMod(selectedIndex - 1, 4);
+            selectedIndex = Math.floorMod(selectedIndex - 1, 3);  // 3扇区
         } else if (scrollDelta < 0) {
-            // 滚轮向下 - 顺时针选择下一个（增加索引）
-            selectedIndex = Math.floorMod(selectedIndex + 1, 4);
+            selectedIndex = Math.floorMod(selectedIndex + 1, 3);
         } else {
             return false;
         }
 
-        // 更新目标旋转角度：让选中的扇区旋转到右侧（0°/3点钟方向）
-        targetAngle = -selectedIndex * 90f;
+        // 更新目标旋转角度：3扇区，每个120度
+        targetAngle = -selectedIndex * 120f;
 
-        // 播放UI点击音效（音调随扇区变化）
+        // 播放UI点击音效
         mc.player.playSound(
             net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(),
-            0.5f,  // 音量
-            1.2f + selectedIndex * 0.1f  // 音调
+            0.5f, 1.2f + selectedIndex * 0.1f
         );
 
-        Tiandao.LOGGER.debug("Scroll selection changed: selectedIndex={}, targetAngle={}", selectedIndex, targetAngle);
+        // 联动星盘
+        triggerStarChartFocus();
+
+        Tiandao.LOGGER.debug("Sector scroll: index={}, angle={}", selectedIndex, targetAngle);
         return true;
+    }
+
+    /**
+     * 处理中心源类型滚轮切换
+     */
+    private static boolean handleSourceScroll(double scrollDelta, Minecraft mc) {
+        if (scrollDelta > 0) {
+            selectedSourceIndex = Math.floorMod(selectedSourceIndex - 1, SOURCES.length);
+        } else if (scrollDelta < 0) {
+            selectedSourceIndex = Math.floorMod(selectedSourceIndex + 1, SOURCES.length);
+        } else {
+            return false;
+        }
+
+        // 重置源绽放动画
+        sourceBloomProgress = 0f;
+
+        // 播放不同的音效（区分源切换）
+        mc.player.playSound(
+            net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,
+            0.4f, 1.5f + selectedSourceIndex * 0.2f
+        );
+
+        Tiandao.LOGGER.debug("Source scroll: {} (index={})",
+            SOURCES[selectedSourceIndex].getName(), selectedSourceIndex);
+        return true;
+    }
+
+    /**
+     * 触发星盘聚焦到当前选中扇区对应的星宫
+     *
+     * 联动逻辑：
+     * - 如果星盘已开启，自动进入聚焦状态展开对应星宫
+     * - 如果星盘未开启，不做任何操作（手盘可独立使用）
+     */
+    private static void triggerStarChartFocus() {
+        StarChartClientManager starChart = StarChartClientManager.getInstance();
+
+        // 只在星盘已开启时联动
+        if (!starChart.isEnabled()) {
+            return;
+        }
+
+        WheelSector currentSector = SECTORS[selectedIndex];
+        StarNodeCategory targetCategory = currentSector.getLinkedCategory();
+
+        if (targetCategory != null) {
+            // 触发星盘聚焦到对应星宫
+            starChart.enterFocusState(targetCategory);
+            Tiandao.LOGGER.debug("HandWheel→StarChart linked: {} → {}",
+                currentSector.getName(), targetCategory.getDisplayName());
+        }
     }
 
     /**
@@ -351,32 +468,34 @@ public final class SpellHandStarRenderer {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(false);
 
-        // 绘制4个扇区背景（统一颜色，不高亮，避免眼晕）
-        for (int i = 0; i < 4; i++) {
-            drawSector3D(poseStack, WHEEL_BASE_RADIUS, i, COLOR_SECTOR_NORMAL);
+        // 绘制3个扇区背景（120度均布）
+        for (int i = 0; i < 3; i++) {
+            drawSector3D_120(poseStack, WHEEL_BASE_RADIUS, i, COLOR_SECTOR_NORMAL);
         }
 
-        // 绘制圆环和十字分割线
+        // 绘制圆环和三分割线
         drawCircle3D(poseStack, WHEEL_BASE_RADIUS, SEGMENTS, COLOR_RING);
-        drawCrossLines(poseStack, WHEEL_BASE_RADIUS, COLOR_CROSS);
+        drawTriLines(poseStack, WHEEL_BASE_RADIUS, COLOR_CROSS);
 
-        // ========== 步骤4：摩天轮渲染物品图标（Ferris Wheel Rendering） ==========
-        // 关键：物品跟随盘子旋转，但通过反向修正保持正立
+        // ========== 步骤4：渲染外圈物品图标（3个扇区） ==========
         ItemRenderer itemRenderer = mc.getItemRenderer();
 
-        // 渲染4个物品 + 选中项的文字（寄生模式）
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
             WheelSector sector = SECTORS[i];
             boolean isSelected = (i == selectedIndex);
 
-            // 更新花朵绽放进度：选中=1.0，未选中=0.0，平滑过渡（阻尼效果）
+            // 更新花朵绽放进度
             float targetProgress = isSelected ? 1.0f : 0.0f;
-            float bloomSpeed = 0.1f; // 绽放速度（降低速度，增强阻尼感）
+            float bloomSpeed = 0.1f;
             itemBloomProgress[i] += (targetProgress - itemBloomProgress[i]) * bloomSpeed;
 
-            // 寄生渲染：文字直接在物品坐标系内偏移，不重复计算角度
-            renderFerrisWheelItem(poseStack, bufferSource, itemRenderer, sector, i, isSelected, currentAngle, itemBloomProgress[i]);
+            // 渲染外圈物品（120度均布）
+            renderFerrisWheelItem_120(poseStack, bufferSource, itemRenderer, sector, i, isSelected, currentAngle, itemBloomProgress[i]);
         }
+
+        // ========== 步骤5：渲染中心源图标 ==========
+        sourceBloomProgress += (1.0f - sourceBloomProgress) * 0.1f;  // 源始终显示
+        renderCenterSource(poseStack, bufferSource, itemRenderer, currentAngle);
 
         RenderSystem.depthMask(true);
         RenderSystem.disableBlend();
@@ -388,24 +507,20 @@ public final class SpellHandStarRenderer {
     }
 
     /**
-     * 获取扇区中心角度（与物品角度映射一致）
+     * 获取扇区中心角度（3扇区，120度均布）
      */
-    private static double getSectorAngle(int sector) {
-        switch (sector) {
-            case 0: return 0.0;                 // Right (0°)
-            case 1: return Math.PI / 2.0;       // Top (90°)
-            case 2: return Math.PI;             // Left (180°)
-            case 3: return Math.PI * 3.0 / 2;   // Bottom (270°)
-            default: return 0.0;
-        }
+    private static double getSectorAngle_120(int sector) {
+        return sector * Math.PI * 2.0 / 3.0;  // 0°, 120°, 240°
     }
 
     /**
-     * 绘制扇形高亮
+     * 绘制扇形（3扇区，120度 + 重叠消除缝隙）
      */
-    private static void drawSector3D(PoseStack poseStack, float radius, int sector, int argb) {
-        double startAngle = getSectorAngle(sector) - Math.PI / 4.0;
-        double endAngle = startAngle + Math.PI / 2.0;
+    private static void drawSector3D_120(PoseStack poseStack, float radius, int sector, int argb) {
+        double centerAngle = getSectorAngle_120(sector);
+        // 增加扇区角度范围：从 ±60° 改为 ±61°，让扇区稍微重叠消除缝隙
+        double startAngle = centerAngle - Math.PI / 3.0 - 0.02;  // -60° - 1°
+        double endAngle = centerAngle + Math.PI / 3.0 + 0.02;    // +60° + 1°
 
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         RenderSystem.disableCull();
@@ -420,20 +535,130 @@ public final class SpellHandStarRenderer {
         float a = ((argb >> 24) & 0xFF) / 255f;
         Matrix4f pose = poseStack.last().pose();
 
-        // 中心点
-        builder.vertex(pose, 0f, 0f, 0f).color(r, g, b, a * 0.9f).endVertex();
+        // 中心点（从圆心开始，不留空）
+        builder.vertex(pose, 0f, 0f, 0f).color(r, g, b, a * 0.8f).endVertex();
 
         // 扇形边缘
-        int arcSegments = SEGMENTS / 4;
+        int arcSegments = SEGMENTS / 3;
         for (int i = 0; i <= arcSegments; i++) {
             double t = (double) i / arcSegments;
             double angle = startAngle + (endAngle - startAngle) * t;
             float x = (float) Math.cos(angle) * radius;
             float y = (float) Math.sin(angle) * radius;
-            builder.vertex(pose, x, y, 0f).color(r, g, b, a * 0.5f).endVertex();
+            builder.vertex(pose, x, y, 0f).color(r, g, b, a).endVertex();
         }
 
         tesselator.end();
+    }
+
+    /**
+     * 绘制三分割线（替代十字线）
+     */
+    private static void drawTriLines(PoseStack poseStack, float radius, int argb) {
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.lineWidth(1.0f);  // 减小线宽（从 2.0f 改为 1.0f）
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder builder = tesselator.getBuilder();
+        builder.begin(VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR);
+
+        float r = ((argb >> 16) & 0xFF) / 255f;
+        float g = ((argb >> 8) & 0xFF) / 255f;
+        float b = (argb & 0xFF) / 255f;
+        float a = ((argb >> 24) & 0xFF) / 255f;
+        Matrix4f pose = poseStack.last().pose();
+
+        // 从中心向外画3条线（60°, 180°, 300°）
+        float innerRadius = 0.08f;
+        for (int i = 0; i < 3; i++) {
+            double angle = i * Math.PI * 2.0 / 3.0 + Math.PI / 3.0;  // 偏移60度，在扇区边界
+            float x1 = (float) Math.cos(angle) * innerRadius;
+            float y1 = (float) Math.sin(angle) * innerRadius;
+            float x2 = (float) Math.cos(angle) * radius;
+            float y2 = (float) Math.sin(angle) * radius;
+            builder.vertex(pose, x1, y1, 0f).color(r, g, b, a).endVertex();
+            builder.vertex(pose, x2, y2, 0f).color(r, g, b, a).endVertex();
+        }
+
+        tesselator.end();
+        RenderSystem.lineWidth(1.0f);
+    }
+
+    /**
+     * 渲染外圈物品（120度均布）
+     */
+    private static void renderFerrisWheelItem_120(PoseStack poseStack, MultiBufferSource bufferSource,
+                                                   ItemRenderer itemRenderer, WheelSector sector,
+                                                   int sectorIndex, boolean isSelected, float wheelAngle, float bloomProgress) {
+        poseStack.pushPose();
+
+        // 1. 定位到扇区角度（120度均布）
+        float sectorAngle = sectorIndex * 120f;
+        poseStack.mulPose(Axis.ZP.rotationDegrees(sectorAngle));
+
+        // 2. 向外推到轨道半径
+        float easeProgress = 1.0f - (float)Math.pow(1.0f - bloomProgress, BLOOM_EASE_POWER);
+        float orbitRadius = ITEM_ORBIT_INNER + (ITEM_ORBIT_OUTER - ITEM_ORBIT_INNER) * easeProgress;
+        poseStack.translate(orbitRadius, 0, 0.01f);
+
+        // 3. 摩天轮修正：抵消盘子和扇区旋转
+        poseStack.mulPose(Axis.ZP.rotationDegrees(-(wheelAngle + sectorAngle)));
+
+        // 4. 渲染文字（选中时）
+        if (isSelected) {
+            poseStack.pushPose();
+            poseStack.translate(0.3, 0, -0.01);  // Z 改为负数，让文字在物品后面
+            poseStack.mulPose(Axis.YP.rotationDegrees(180f));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(180f));
+            float textScale = 0.02f;
+            poseStack.scale(-textScale, textScale, textScale);
+
+            Minecraft mc = Minecraft.getInstance();
+            Font font = mc.font;
+            String text = sector.getName();
+            Matrix4f matrix = poseStack.last().pose();
+            float textWidth = font.width(text);
+            font.drawInBatch(text, -textWidth / 2f, -font.lineHeight / 2f, 0xFFFFFF00, false,
+                            matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            poseStack.popPose();
+        }
+
+        // 5. 缩放和渲染物品
+        float animatedScale = ITEM_SCALE_SMALL + (ITEM_SCALE_LARGE - ITEM_SCALE_SMALL) * easeProgress;
+        poseStack.scale(animatedScale, animatedScale, animatedScale);
+        itemRenderer.renderStatic(sector.getIcon(), ItemDisplayContext.GUI, 15728880,
+            OverlayTexture.NO_OVERLAY, poseStack, bufferSource, null, 0);
+
+        poseStack.popPose();
+    }
+
+    /**
+     * 渲染中心源图标
+     *
+     * 不显示文字标签 - 通过图标区分：
+     * - 下界之星 = 自身灵力
+     * - 磁石 = 阵盘
+     * - 紫水晶碎片 = 灵物
+     */
+    private static void renderCenterSource(PoseStack poseStack, MultiBufferSource bufferSource,
+                                           ItemRenderer itemRenderer, float wheelAngle) {
+        SourceType source = SOURCES[selectedSourceIndex];
+
+        poseStack.pushPose();
+
+        // 1. 中心位置
+        poseStack.translate(0, 0, 0.02f);
+
+        // 2. 抵消盘子旋转，保持源图标正立
+        poseStack.mulPose(Axis.ZP.rotationDegrees(-wheelAngle));
+
+        // 3. 渲染源图标（不显示文字，更简洁）
+        float iconScale = 0.20f;  // 稍微放大一点，更醒目
+        poseStack.scale(iconScale, iconScale, iconScale);
+        itemRenderer.renderStatic(source.getIcon(), ItemDisplayContext.GUI, 15728880,
+            OverlayTexture.NO_OVERLAY, poseStack, bufferSource, null, 0);
+
+        poseStack.popPose();
     }
 
     /**

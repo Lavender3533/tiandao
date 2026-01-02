@@ -82,8 +82,13 @@ public class DaoCardWidget extends AbstractWidget {
         // 1. 渲染轻阴影（偏移2px，40%透明黑）
         graphics.fill(renderX + 2, renderY + 2, renderX + renderW + 2, renderY + renderH + 2, DaoTheme.CARD_SHADOW);
 
-        // 2. 渲染卡片背景（使用九宫格纹理 card_light.png）
-        DaoTheme.renderNineSlice(graphics, DaoTheme.CARD_LIGHT, renderX, renderY, renderW, renderH, 8);
+        // 2. 渲染卡片背景（术法编辑器已禁用，使用程序化渲染）
+        // DaoTheme.renderNineSlice(graphics, DaoTheme.CARD_LIGHT, renderX, renderY, renderW, renderH, 8);
+        graphics.fill(renderX, renderY, renderX + renderW, renderY + renderH, 0xFFD7CCC8); // 米色背景
+        graphics.fill(renderX, renderY, renderX + renderW, renderY + 1, 0xFF8B7355); // 顶部边框
+        graphics.fill(renderX, renderY + renderH - 1, renderX + renderW, renderY + renderH, 0xFF8B7355); // 底部边框
+        graphics.fill(renderX, renderY, renderX + 1, renderY + renderH, 0xFF8B7355); // 左边框
+        graphics.fill(renderX + renderW - 1, renderY, renderX + renderW, renderY + renderH, 0xFF8B7355); // 右边框
 
         // 3. Hover/Selected 状态叠加颜色（使用半透明fill）
         if (selected) {

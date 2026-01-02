@@ -11,6 +11,7 @@ import org.example.Kangnaixi.tiandao.client.KeyBindings;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationHUD;
 import org.example.Kangnaixi.tiandao.client.gui.CultivationStatusScreen;
 import org.example.Kangnaixi.tiandao.client.renderer.SpellHandStarRenderer;
+import org.example.Kangnaixi.tiandao.client.starchart.StarChartClientManager;
 import org.example.Kangnaixi.tiandao.config.CultivationConfig;
 
 /**
@@ -30,9 +31,16 @@ public class ClientTickHandler {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
-        
+
         // 处理按键输入
         handleKeyInput();
+
+        // 更新星盘动画状态（包含注视检测）
+        try {
+            StarChartClientManager.getInstance().update();
+        } catch (Exception e) {
+            Tiandao.LOGGER.error("星盘动画更新时发生错误", e);
+        }
     }
     
     /**
@@ -58,6 +66,11 @@ public class ClientTickHandler {
 
         while (KeyBindings.OPEN_SPELL_EDITOR.consumeClick()) {
             // GUI 已禁用，跳过
+        }
+
+        // 处理星盘界面按键 (K键)
+        while (KeyBindings.OPEN_STAR_CHART.consumeClick()) {
+            openStarChart();
         }
 
         // 处理手持法盘切换键 (V键)
@@ -126,6 +139,25 @@ public class ClientTickHandler {
             }
         } catch (Exception e) {
             Tiandao.LOGGER.error("切换HUD详情状态时出错", e);
+        }
+    }
+
+    /**
+     * 切换3D星盘渲染
+     */
+    private static void openStarChart() {
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.player != null) {
+                boolean enabled = StarChartClientManager.getInstance().toggle();
+                String message = enabled
+                    ? "§6【灵脉星图】§f已开启 - 注视节点2秒聚焦，点击解锁"
+                    : "§6【灵脉星图】§f已关闭";
+                minecraft.player.sendSystemMessage(Component.literal(message));
+                Tiandao.LOGGER.debug("灵脉星图状态: {}", enabled ? "启用" : "禁用");
+            }
+        } catch (Exception e) {
+            Tiandao.LOGGER.error("切换灵脉星图时出错", e);
         }
     }
 }
